@@ -1,0 +1,25 @@
+{
+  "format": "dimer_hf_snapshot",
+  "formatVersion": 1,
+  "modelKey": "resnet50-a1",
+  "modelId": "timm/resnet50.a1_in1k",
+  "revision": "767268603ca0cb0bfe326fa87277f19c419566ef",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 38435,
+      "sha256": "1bf90a24888cff1da80e2e7b2e341fad1e4e448c19d92eb5bc08468393251721"
+    },
+    {
+      "path": "config.json",
+      "bytes": 756,
+      "sha256": "ff00d936f02c3b5f9f80a169d651ed28f9b6dc9cb1fd0464f92da4761caaac50"
+    },
+    {
+      "path": "model.safetensors",
+      "bytes": 102469840,
+      "sha256": "773525d5821de224f8f30c33377b7a795d7863e08522698200d3217d3f2a41bb"
+    }
+  ],
+  "totalBytes": 102509031
+}
