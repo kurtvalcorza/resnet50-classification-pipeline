@@ -40,8 +40,18 @@ weights/resnet50-a1/
 ```
 pip install -e . --no-deps
 pytest -q -o addopts= tests      # offline, no weights needed
-python smoke.py                  # loads the snapshot, classifies one synthetic image
+python -c "from resnet50_classification_pipeline import *; print(ResNet50ClassificationPipeline.from_pretrained().predict([__import__('PIL.Image').Image.new('RGB', (224, 224), 'gray')])[0]['predicted_label'])"  # loads the verified snapshot, classifies one synthetic image
 ```
+
+## Tutorials
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kurtvalcorza/resnet50-classification-pipeline/blob/main/tutorials/resnet50_classification_colab.ipynb)
+
+`tutorials/resnet50_classification_colab.ipynb` is declared `TASK-INFERENCE` under DIMER Notebook Specification 1.0. Its default path generates a synthetic 256×256 gradient in code (no download, no ground truth), surfaces the pipeline ceilings, resolves the pinned model through the public API, classifies with the argmax rule over uncalibrated softmax scores, computes `top_k_accuracy` only when a ground-truth class index is supplied, and exports JSON plus a rank-ordered CSV. BYOD is optional and gated off by default. See `tutorials/README.md` for the registry and `docs/release-verification.md` for the release gate.
+
+## Release status
+
+**Candidate.** Static/unit checks do not constitute clean-runtime notebook evidence. The clean-runtime run of the tutorial is pending; complete `docs/release-verification.md` against the exact release revision before calling the notebook release-grade.
 
 ## Documents
 
