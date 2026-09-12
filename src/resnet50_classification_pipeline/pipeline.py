@@ -65,6 +65,46 @@ def verify_snapshot(path: str | Path | None = None) -> dict[str, Any]:
     return {"path": str(root), **manifest}
 
 
+def _hub_download(relative_path: str, root: Path) -> None:
+    """Fetch one manifest-listed file at MODEL_REVISION straight into the snapshot directory."""
+    from huggingface_hub import hf_hub_download
+
+    hf_hub_download(MODEL_ID, relative_path, revision=MODEL_REVISION, local_dir=str(root))
+
+
+def stage_missing_files(
+    path: str | Path | None = None,
+    *,
+    allow_download: bool = False,
+    downloader: Callable[[str, Path], None] | None = None,
+) -> list[str]:
+    """Fetch manifest-listed files that are absent locally (a fresh clone commits the manifest but
+    git-ignores the weights). Returns the relative paths fetched; `verify_snapshot` still runs after."""
+    root = Path(path) if path is not None else DEFAULT_WEIGHTS_DIR
+    manifest_path = root / MANIFEST_NAME
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"manifest not found: {manifest_path}")
+    with open(manifest_path, encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    if manifest.get("modelId") != MODEL_ID or manifest.get("revision") != MODEL_REVISION:
+        raise ValueError(
+            f"manifest names {manifest.get('modelId')}@{manifest.get('revision')}, "
+            f"package pins {MODEL_ID}@{MODEL_REVISION}; refusing to stage"
+        )
+    missing = [entry["path"] for entry in manifest["files"] if not (root / entry["path"]).is_file()]
+    if not missing:
+        return []
+    if not allow_download:
+        raise FileNotFoundError(
+            f"snapshot at {root} is missing {missing}; "
+            f"pass allow_download=True to fetch them at {MODEL_REVISION}"
+        )
+    fetch = downloader or _hub_download
+    for relative_path in missing:
+        fetch(relative_path, root)
+    return missing
+
+
 def _hub_reference(model_id: str, revision: str) -> str:
     """timm's ``hf-hub:owner/name@revision`` form; ``hf_split`` passes ``revision=`` to hf_hub_download."""
     return f"hf-hub:{model_id}@{revision}"
@@ -113,6 +153,7 @@ class ResNet50ClassificationPipeline:
         root = Path(weights_dir or DEFAULT_WEIGHTS_DIR)
         arch_name = MODEL_ID.split("/", 1)[1]
         if (root / MANIFEST_NAME).is_file():
+            stage_missing_files(root, allow_download=allow_download)
             verify_snapshot(root)
             with open(root / CONFIG_FILE, encoding="utf-8") as fh:
                 config = json.load(fh)

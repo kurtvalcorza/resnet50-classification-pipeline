@@ -9,6 +9,7 @@ from .pipeline import (
     MODEL_REVISION,
     NUM_CLASSES,
     ResNet50ClassificationPipeline,
+    stage_missing_files,
     top_k_accuracy,
     verify_snapshot,
 )
@@ -25,5 +26,6 @@ __all__ = [
     "NUM_CLASSES",
     "ResNet50ClassificationPipeline",
     "top_k_accuracy",
+    "stage_missing_files",
     "verify_snapshot",
 ]
