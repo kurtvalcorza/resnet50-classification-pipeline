@@ -472,8 +472,10 @@ def _validate_parity(path: Path, notebook: dict, code_cells: list[tuple[int, str
     pins_block = re.search(r"^PINS = \[(.*?)^\]", code, re.M | re.S)
     _check(pins_block is not None, f"{path.name}: install cell must carry PINS = [...] (ENV2)")
     _check(re.findall(r"'([^']+)'", pins_block.group(1)) == build._pins(ROOT), f"{path.name}: inline PINS != pyproject runtime pins (PAR2)")
-    rendered = build.to_bytes(build.render(ROOT, template))
-    _check(path.read_bytes() == rendered, f"{path.name}: differs from tools/build_notebook.py output (PAR3); regenerate")
+    recorded = notebook["metadata"]["dimer"]["generated_from"]["revision"]
+    rendered = build.to_bytes(build.render(ROOT, template, recorded))
+    current = path.read_bytes().replace(b"\r\n", b"\n")  # autocrlf checkouts are CRLF
+    _check(current == rendered, f"{path.name}: differs from tools/build_notebook.py output (PAR3); regenerate")
 
 
 def _validate_bootstrap_guard(path: Path, code_cells: list[tuple[int, str, ast.Module]]) -> None:

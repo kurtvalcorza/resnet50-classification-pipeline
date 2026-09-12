@@ -88,8 +88,12 @@ def test_par2_inline_manifest_and_pins_match_repository(notebook: dict) -> None:
 
 
 def test_par3_generator_check_is_clean(notebook: dict) -> None:
-    rendered = build.to_bytes(build.render(ROOT, TEMPLATE))
-    assert NOTEBOOK.read_bytes() == rendered, "notebook is stale; run python tools/build_notebook.py"
+    # The recorded revision is a provenance label carried through the check (see build_notebook.py
+    # --check); content drift is what fails this comparison.
+    recorded = notebook["metadata"]["dimer"]["generated_from"]["revision"]
+    rendered = build.to_bytes(build.render(ROOT, TEMPLATE, recorded))
+    current = NOTEBOOK.read_bytes().replace(b"\r\n", b"\n")  # autocrlf checkouts are CRLF
+    assert current == rendered, "notebook is stale; run python tools/build_notebook.py"
 
 
 def test_st1_primary_path_has_no_repository_dependency(notebook: dict) -> None:

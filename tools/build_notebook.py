@@ -125,17 +125,31 @@ def _pins(repo: Path) -> list[str]:
     return pins
 
 
-def _module_revision(repo: Path, module_rel: str) -> str:
+def _head_revision(repo: Path) -> str:
+    """The repository revision the notebook is generated from (ST5): HEAD at generation time.
+
+    It is a provenance label only; the parity anchor is the module SHA-256, so a later commit that
+    carries the regenerated notebook does not invalidate it (see ``--check``).
+    """
     try:
-        out = subprocess.check_output(
-            ["git", "-C", str(repo), "log", "-1", "--format=%H", "--", module_rel], text=True
-        ).strip()
+        out = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
     except (OSError, subprocess.CalledProcessError):
         out = ""
     return out or "uncommitted"
 
 
-def load_context(repo: Path, template: dict[str, Any]) -> dict[str, Any]:
+def recorded_revision(notebook_path: Path) -> str | None:
+    """`generated_from.revision` of an existing notebook, or None."""
+    if not notebook_path.exists():
+        return None
+    try:
+        meta = json.loads(notebook_path.read_text(encoding="utf-8"))["metadata"]["dimer"]["generated_from"]
+        return str(meta["revision"])
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+def load_context(repo: Path, template: dict[str, Any], revision: str | None = None) -> dict[str, Any]:
     pkg = template["package"]
     module_rel = f"src/{pkg}/pipeline.py"
     module_text = (repo / module_rel).read_text(encoding="utf-8")
@@ -155,7 +169,7 @@ def load_context(repo: Path, template: dict[str, Any]) -> dict[str, Any]:
         "module_text": module_text,
         "embedded_text": apply_rewrites(module_text),
         "module_sha256": hashlib.sha256(module_text.encode("utf-8")).hexdigest(),
-        "module_revision": _module_revision(repo, module_rel),
+        "module_revision": revision or _head_revision(repo),
         "manifest": manifest,
         "pins": _pins(repo),
         **ident,
@@ -177,8 +191,8 @@ def _code(source: str, cell_id: str, metadata: dict[str, Any] | None = None) -> 
     }
 
 
-def render(repo: Path, template: dict[str, Any]) -> dict[str, Any]:
-    ctx = load_context(repo, template)
+def render(repo: Path, template: dict[str, Any], revision: str | None = None) -> dict[str, Any]:
+    ctx = load_context(repo, template, revision)
     stem = template["stem"]
     fmt = {"stem": stem, **{k: ctx[k] for k in ("MODEL_ID", "MODEL_REVISION", "MODEL_LICENSE", "MODEL_KEY")}}
     cells: list[dict[str, Any]] = []
@@ -345,14 +359,19 @@ def main(argv: list[str] | None = None) -> int:
     repo = args.repo.resolve()
     template = load_template(args.template or repo / "tools" / "notebook_template.py")
     out = args.out or repo / "tutorials" / template["notebook_name"]
-    rendered = to_bytes(render(repo, template))
     if args.check:
-        current = out.read_bytes() if out.exists() else b""
+        # PAR3/PAR4: the recorded revision is a provenance label and is carried through the check;
+        # drift is caught by content (module text, manifest, pins) — a changed module changes the
+        # rendered cell and its SHA-256, so the byte comparison fails regardless of the label.
+        rendered = to_bytes(render(repo, template, recorded_revision(out)))
+        # Compare on LF: a Windows checkout with core.autocrlf rewrites the file to CRLF.
+        current = out.read_bytes().replace(b"\r\n", b"\n") if out.exists() else b""
         if current != rendered:
             print(f"STALE: {out} differs from the generator output; run tools/build_notebook.py", file=sys.stderr)
             return 1
         print(f"OK: {out} is up to date ({len(rendered)} bytes)")
         return 0
+    rendered = to_bytes(render(repo, template))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(rendered)
     print(f"wrote {out} ({len(rendered)} bytes)")
