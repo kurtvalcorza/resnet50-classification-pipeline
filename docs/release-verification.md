@@ -24,7 +24,7 @@ CI runs `tools/validate_release_assets.py`, which checks:
   which the notebook asserts against the module before fetching), the revision is a 40-hex immutable commit, and the same identity string appears in `README.md`,
   `MODEL_CARD.md`, and `docs/WEIGHTS.md` with no stray revisions;
 - the profile-specific public-API calls (`stage_missing_files`, `verify_snapshot`,
-  `ResNet50ClassificationPipeline.from_pretrained(weights_dir=...)`, `validate_images`, `predict`, `evaluation_report`), the ceiling print (`NUM_CLASSES`, `MAX_IMAGE_SIDE`, `MAX_BATCH`),
+  `ResNet50ClassificationPipeline.from_pretrained(weights_dir=...)`, `validate_inputs`, `predict`, `evaluation_report`), the ceiling print (`NUM_CLASSES`, `MAX_IMAGE_SIDE`, `MAX_BATCH`),
   the exports, the learner-facing classification statements (argmax decision rule, uncalibrated
   softmax, no shipped threshold, rank-ordered scores) and the gated-off BYOD default listed in
   the validator; forbidden patterns (credential-in-URL, any `git clone` / `github.com` / repository import on the
@@ -70,7 +70,7 @@ Before changing the registry status from `Candidate` to `Release-grade`:
      `source == 'local-snapshot'`;
    - classification through `predict(image, top_k=5)` with `decision_rule == 'argmax'` and a
      rank-ordered top-5 list;
-   - `validate_images` writes `outputs/resnet50_classification_input_manifest.json` (verdict `accepted`, one recorded
+   - `validate_inputs` writes `outputs/resnet50_classification_input_manifest.json` (verdict `accepted`, one recorded
      rejection finding from the oversized probe);
    - `evaluation_report` writes `outputs/resnet50_classification_evaluation_report.json` with verdict `not-measurable`
      on the synthetic sample (no ground truth), stated as such;

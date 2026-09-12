@@ -13,7 +13,7 @@ from .pipeline import (
     evaluation_report,
     stage_missing_files,
     top_k_accuracy,
-    validate_images,
+    validate_inputs,
     verify_snapshot,
 )
 
@@ -32,6 +32,6 @@ __all__ = [
     "evaluation_report",
     "top_k_accuracy",
     "stage_missing_files",
-    "validate_images",
+    "validate_inputs",
     "verify_snapshot",
 ]

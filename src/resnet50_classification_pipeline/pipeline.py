@@ -159,7 +159,7 @@ def _check_inputs(images: Any, top_k: int) -> list[Image.Image]:
     return list(images)
 
 
-def validate_images(
+def validate_inputs(
     images: Image.Image | Sequence[Image.Image],
     top_k: int = DEFAULT_TOP_K,
     *,

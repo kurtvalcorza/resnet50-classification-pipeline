@@ -13,7 +13,7 @@ from resnet50_classification_pipeline import (
     MODEL_REVISION,
     NUM_CLASSES,
     evaluation_report,
-    validate_images,
+    validate_inputs,
 )
 
 
@@ -35,8 +35,8 @@ def _result(indices: list[int]) -> dict:
     }
 
 
-def test_validate_images_returns_manifest_with_schema_and_identity() -> None:
-    manifest = validate_images([_image(), _image(48)], top_k=3, names=["a", "b"])
+def test_validate_inputs_returns_manifest_with_schema_and_identity() -> None:
+    manifest = validate_inputs([_image(), _image(48)], top_k=3, names=["a", "b"])
     assert manifest["verdict"] == "accepted"
     assert manifest["findings"] == []
     assert manifest["schema"] == INPUT_SCHEMA
@@ -51,20 +51,20 @@ def test_validate_images_returns_manifest_with_schema_and_identity() -> None:
     assert (manifest["model_id"], manifest["model_revision"]) == (MODEL_ID, MODEL_REVISION)
 
 
-def test_validate_images_single_image_default_ids() -> None:
-    manifest = validate_images(_image())
+def test_validate_inputs_single_image_default_ids() -> None:
+    manifest = validate_inputs(_image())
     assert [entry["id"] for entry in manifest["inputs"]] == ["image-0"]
 
 
-def test_validate_images_rejects_like_predict() -> None:
+def test_validate_inputs_rejects_like_predict() -> None:
     with pytest.raises(ValueError, match="MAX_IMAGE_SIDE"):
-        validate_images(Image.new("RGB", (MAX_IMAGE_SIDE + 1, 8)))
+        validate_inputs(Image.new("RGB", (MAX_IMAGE_SIDE + 1, 8)))
     with pytest.raises(ValueError, match="MAX_BATCH"):
-        validate_images([_image()] * (MAX_BATCH + 1))
+        validate_inputs([_image()] * (MAX_BATCH + 1))
     with pytest.raises(TypeError):
-        validate_images("not an image")
+        validate_inputs("not an image")
     with pytest.raises(ValueError, match="names must have one entry per image"):
-        validate_images([_image()], names=["a", "b"])
+        validate_inputs([_image()], names=["a", "b"])
 
 
 def test_evaluation_report_not_measurable_without_targets() -> None:

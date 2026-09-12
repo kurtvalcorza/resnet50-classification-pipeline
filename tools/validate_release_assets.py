@@ -39,8 +39,8 @@ EXPECTED_OUTPUTS = (
 )
 # Profile-specific code the notebook must exercise through the carried module's public API.
 CODE_MARKERS = (
-    "input_manifest = validate_images(image, top_k=5, names=[image_name])",
-    "validate_images(Image.new('RGB', (MAX_IMAGE_SIDE + 1, 8)))",
+    "input_manifest = validate_inputs(image, top_k=5, names=[image_name])",
+    "validate_inputs(Image.new('RGB', (MAX_IMAGE_SIDE + 1, 8)))",
     "result = pipe.predict(image, top_k=5)",
     "report = evaluation_report(result, targets, sample_kind=sample_kind)",
     "targets = None if ground_truth is None else [ground_truth]",

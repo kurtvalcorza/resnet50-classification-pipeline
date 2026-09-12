@@ -46,7 +46,7 @@ TEMPLATE = {
         "**No adaptation occurs:** no training, fine-tuning, in-context conditioning, or preprocessing fitting happens "
         "in this notebook — the upstream checkpoint supplies the weights and the preprocessing configuration, and the "
         "carried pipeline module adds snapshot verification, input validation, a fixed output contract and the "
-        "`top_k_accuracy`, `validate_images` and `evaluation_report` helpers. The default sample is a synthetic image "
+        "`top_k_accuracy`, `validate_inputs` and `evaluation_report` helpers. The default sample is a synthetic image "
         "generated in code; its prediction is demonstration (plumbing) evidence, not a production-quality or benchmark claim."
     ),
     "learning_objectives": (
@@ -114,7 +114,7 @@ TEMPLATE = {
         {
             "md": (
                 "## 5. Validate the input → input manifest\n\n"
-                "`validate_images` is the pipeline's public validation stage: it applies exactly the checks `predict` "
+                "`validate_inputs` is the pipeline's public validation stage: it applies exactly the checks `predict` "
                 "applies — type, batch size 1..`MAX_BATCH`, image side 1..`MAX_IMAGE_SIDE` px, `top_k` 1..`NUM_CLASSES` — "
                 "and returns an **input manifest** naming the schema and ceilings, each input's observed mode and size, "
                 "and the verdict. The manifest is written to `outputs/{stem}_input_manifest.json`. To show what rejection "
@@ -128,10 +128,10 @@ TEMPLATE = {
                 "import os\n\n"
                 "os.makedirs('outputs', exist_ok=True)\n"
                 "print({{'ceilings': {{'NUM_CLASSES': NUM_CLASSES, 'MAX_IMAGE_SIDE': MAX_IMAGE_SIDE, 'MAX_BATCH': MAX_BATCH}}}})\n"
-                "input_manifest = validate_images(image, top_k=5, names=[image_name])\n"
+                "input_manifest = validate_inputs(image, top_k=5, names=[image_name])\n"
                 "# Demonstrate rejection on an input that breaks a ceiling; the finding is recorded, not swallowed.\n"
                 "try:\n"
-                "    validate_images(Image.new('RGB', (MAX_IMAGE_SIDE + 1, 8)))\n"
+                "    validate_inputs(Image.new('RGB', (MAX_IMAGE_SIDE + 1, 8)))\n"
                 "except ValueError as exc:\n"
                 "    input_manifest['findings'].append({{'input': 'oversized-probe', 'verdict': 'rejected', 'message': str(exc)}})\n"
                 "with open('outputs/{stem}_input_manifest.json', 'w', encoding='utf-8') as handle:\n"
