@@ -3,6 +3,8 @@ license: apache-2.0
 model_card_spec: "1.1"
 pipeline_tag: image-classification
 base_model: timm/resnet50.a1_in1k
+date_published: "2023-04-05"
+date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt`, https://huggingface.co/api/models/timm/resnet50.a1_in1k)"
 ---
 
 # ResNet-50 a1_in1k (DIMER package v0.1.0) — Image Classification
@@ -11,7 +13,6 @@ base_model: timm/resnet50.a1_in1k
 [![Upstream GitHub](https://img.shields.io/badge/Upstream%20GitHub-huggingface%2Fpytorch--image--models-181717?style=flat&logo=github&logoColor=white)](https://github.com/huggingface/pytorch-image-models)
 [![arXiv Paper](https://img.shields.io/badge/arXiv-2110.00476-b31b1b.svg)](https://arxiv.org/abs/2110.00476)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Pipeline](https://img.shields.io/badge/Pipeline-resnet50--classification--pipeline-2ea44f?style=flat&logo=github)](https://github.com/kurtvalcorza/resnet50-classification-pipeline)
 
 > [!WARNING]
 > ⚠️ **Provided for research, training, and evaluation purposes only.** Model weights are redistributed unmodified under their upstream license, which controls your use, including any commercial use or redistribution; the accompanying code and notebooks are released under this repository's license. All of it is supplied **"as is"**, without warranty of any kind, and has not been validated for production, clinical, or safety-critical use. Running the notebooks downloads third-party weights and datasets governed by their own licenses and consumes compute on your own Colab/Kaggle account. To the maximum extent permitted by law, the maintainers of this repository and the DIMER platform accept no liability for any damages arising from their use. Hosting implies no affiliation with or endorsement by the original authors.
@@ -28,7 +29,7 @@ This pipeline provides a ready-to-run interactive Google Colab notebook that exe
 
 ---
 
-###### Description
+#### Description
 
 `timm/resnet50.a1_in1k` is the ResNet-50 convolutional classifier trained by Ross Wightman with the "ResNet Strikes Back" A1 recipe (LAMB optimizer, binary cross-entropy loss, cosine schedule; upstream README, arXiv:2110.00476), published in the `timm` library and pinned here to revision `767268603ca0cb0bfe326fa87277f19c419566ef`. Architecturally it is a ResNet-B: a 7×7 stem convolution, four stages of bottleneck residual blocks with 1×1 shortcut downsampling, global average pooling, and a 1000-way linear head (25.6 M parameters, 4.1 GMACs at 224 px per the upstream card). At inference the network maps a normalized 3×224×224 tensor to 1000 logits in one forward pass; no adaptation, fine-tuning, or in-context conditioning happens in this repository. What this repository adds is packaging: the `ResNet50ClassificationPipeline` class in `src/resnet50_classification_pipeline/pipeline.py`, digest verification of the local snapshot (`verify_snapshot`), input validation, a fixed output contract, and a `top_k_accuracy` helper.
 
