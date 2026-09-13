@@ -259,7 +259,20 @@ class ResNet50ClassificationPipeline:
 
         root = Path(weights_dir or DEFAULT_WEIGHTS_DIR)
         arch_name = MODEL_ID.split("/", 1)[1]
-        if (root / MANIFEST_NAME).is_file():
+        resolved_device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        if (root / "model-config.json").is_file() and (root / WEIGHTS_FILE).is_file():
+            from safetensors.torch import load_file
+            with open(root / "model-config.json", encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            num_classes = cfg.get("num_classes", len(cfg.get("class_names", [])))
+            labels = tuple(cfg.get("class_names", [f"class_{i}" for i in range(num_classes)]))
+            model = timm.create_model(arch_name, pretrained=False, num_classes=num_classes)
+            model.load_state_dict(load_file(root / WEIGHTS_FILE, device=str(resolved_device)), strict=True)
+            source = "fine-tuned-artifact"
+            data_config = cfg.get("data_config") or resolve_model_data_config(model)
+            transform = create_transform(**data_config, is_training=False)
+        elif (root / MANIFEST_NAME).is_file():
             stage_missing_files(root, allow_download=allow_download)
             verify_snapshot(root)
             with open(root / CONFIG_FILE, encoding="utf-8") as fh:
@@ -273,22 +286,25 @@ class ResNet50ClassificationPipeline:
                 arch_name, pretrained=True, pretrained_cfg_overlay=overlay, num_classes=NUM_CLASSES
             )
             source = "local-snapshot"
+            data_config = resolve_model_data_config(model)
+            transform = create_transform(**data_config, is_training=False)
+            info = ImageNetInfo(subset="imagenet-1k")
+            labels = tuple(info.index_to_description(i) for i in range(info.num_classes()))
         elif allow_download:
             model = timm.create_model(
                 _hub_reference(MODEL_ID, revision=MODEL_REVISION), pretrained=True, num_classes=NUM_CLASSES
             )
             source = "hf-hub"
+            data_config = resolve_model_data_config(model)
+            transform = create_transform(**data_config, is_training=False)
+            info = ImageNetInfo(subset="imagenet-1k")
+            labels = tuple(info.index_to_description(i) for i in range(info.num_classes()))
         else:
             raise FileNotFoundError(
                 f"no verified snapshot at {root} and allow_download=False; "
                 f"stage it with: hf download {MODEL_ID} --revision {MODEL_REVISION} --local-dir {root}"
             )
-        resolved_device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
         model = model.eval().to(resolved_device)
-        data_config = resolve_model_data_config(model)
-        transform = create_transform(**data_config, is_training=False)
-        info = ImageNetInfo(subset="imagenet-1k")
-        labels = tuple(info.index_to_description(i) for i in range(info.num_classes()))
 
         def runner(batch: Any) -> Any:
             with torch.inference_mode():
@@ -296,20 +312,151 @@ class ResNet50ClassificationPipeline:
 
         return cls(runner, transform, resolved_device, labels, source)
 
+    @classmethod
+    def fit(
+        cls,
+        train_images: Sequence[Image.Image],
+        train_targets: Sequence[int],
+        val_images: Sequence[Image.Image],
+        val_targets: Sequence[int],
+        class_names: Sequence[str],
+        *,
+        epochs: int = 1,
+        batch_size: int = 4,
+        learning_rate: float = 1e-4,
+        weight_decay: float = 0.01,
+        seed: int = 20260910,
+        device: str | None = None,
+        weights_dir: str | Path | None = None,
+        output_dir: str | Path | None = None,
+    ) -> tuple[ResNet50ClassificationPipeline, dict[str, Any]]:
+        """Fine-tune the ResNet-50 model on custom classes 100% in-kernel."""
+        import timm
+        import torch
+        import torch.nn.functional as F
+        from safetensors.torch import load_file, save_file
+        from torch.utils.data import DataLoader, Dataset
+
+        root = Path(weights_dir or DEFAULT_WEIGHTS_DIR)
+        resolved_device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
+        num_classes = len(class_names)
+        arch_name = MODEL_ID.split("/", 1)[1]
+
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        model = timm.create_model(arch_name, pretrained=False, num_classes=num_classes)
+        weights_path = root / WEIGHTS_FILE
+        if weights_path.is_file():
+            sd = load_file(weights_path)
+            backbone_sd = {k: v for k, v in sd.items() if not k.startswith("fc.") and not k.startswith("head.")}
+            model.load_state_dict(backbone_sd, strict=False)
+
+        model.to(resolved_device)
+        data_config = timm.data.resolve_model_data_config(model)
+        train_transform = timm.data.create_transform(**data_config, is_training=True)
+        eval_transform = timm.data.create_transform(**data_config, is_training=False)
+
+        class ImageDataset(Dataset):
+            def __init__(self, imgs: Sequence[Image.Image], targets: Sequence[int], transform_fn: Any):
+                self.imgs = list(imgs)
+                self.targets = list(targets)
+                self.transform_fn = transform_fn
+
+            def __len__(self) -> int:
+                return len(self.imgs)
+
+            def __getitem__(self, idx: int) -> tuple[Any, int]:
+                img = self.imgs[idx].convert("RGB")
+                tensor = self.transform_fn(img)
+                return tensor, self.targets[idx]
+
+        train_loader = DataLoader(
+            ImageDataset(train_images, train_targets, train_transform),
+            batch_size=batch_size,
+            shuffle=True,
+        )
+        val_loader = DataLoader(
+            ImageDataset(val_images, val_targets, eval_transform),
+            batch_size=batch_size,
+            shuffle=False,
+        )
+
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        history = []
+
+        for epoch in range(epochs):
+            model.train()
+            train_loss_sum, train_count = 0.0, 0
+            for inputs, targets in train_loader:
+                inputs = inputs.to(resolved_device)
+                targets = targets.to(resolved_device)
+                optimizer.zero_grad(set_to_none=True)
+                outputs = model(inputs)
+                loss = F.cross_entropy(outputs, targets)
+                loss.backward()
+                optimizer.step()
+                train_loss_sum += float(loss.detach().cpu()) * targets.numel()
+                train_count += targets.numel()
+
+            model.eval()
+            val_loss_sum, val_correct, val_count = 0.0, 0, 0
+            with torch.no_grad():
+                for inputs, targets in val_loader:
+                    inputs = inputs.to(resolved_device)
+                    targets = targets.to(resolved_device)
+                    outputs = model(inputs)
+                    loss = F.cross_entropy(outputs, targets)
+                    val_loss_sum += float(loss.detach().cpu()) * targets.numel()
+                    val_correct += int((outputs.argmax(dim=-1) == targets).sum())
+                    val_count += targets.numel()
+
+            history.append({
+                "epoch": epoch + 1,
+                "train_loss": train_loss_sum / max(1, train_count),
+                "val_loss": val_loss_sum / max(1, val_count),
+                "val_accuracy": val_correct / max(1, val_count),
+            })
+
+        if output_dir is not None:
+            out_path = Path(output_dir)
+            out_path.mkdir(parents=True, exist_ok=True)
+            safetensors_path = out_path / WEIGHTS_FILE
+            save_file({k: v.detach().cpu().contiguous() for k, v in model.state_dict().items()}, safetensors_path)
+            config_payload = {
+                "architecture": "resnet50",
+                "num_classes": num_classes,
+                "class_names": list(class_names),
+                "model_id": MODEL_ID,
+                "model_revision": MODEL_REVISION,
+                "data_config": data_config,
+            }
+            with open(out_path / "model-config.json", "w", encoding="utf-8") as fh:
+                json.dump(config_payload, fh, indent=2)
+
+        def runner(batch: Any) -> Any:
+            with torch.inference_mode():
+                return model(batch.to(resolved_device))
+
+        pipeline = cls(runner, eval_transform, resolved_device, tuple(class_names), "fine-tuned")
+        return pipeline, {"history": history, "class_names": list(class_names), "device": resolved_device}
+
     def _validate(self, images: Any, top_k: int) -> list[Image.Image]:
         return _check_inputs(images, top_k)
 
     def predict(
         self, images: Image.Image | Sequence[Image.Image], top_k: int = DEFAULT_TOP_K
     ) -> dict[str, Any]:
-        """Classify images; ``score`` is a softmax score over 1000 classes, not a calibrated probability."""
+        """Classify images; ``score`` is a softmax score, not a calibrated probability."""
         import torch
 
         batch_images = self._validate(images, top_k)
         batch = torch.stack([self._transform(image.convert("RGB")) for image in batch_images])
         logits = self._runner(batch)
-        if not isinstance(logits, torch.Tensor) or logits.shape != (len(batch_images), NUM_CLASSES):
-            raise RuntimeError("runner must return a tensor of shape (batch, NUM_CLASSES)")
+        expected_classes = len(self.labels) if self.labels else NUM_CLASSES
+        if not isinstance(logits, torch.Tensor) or logits.shape != (len(batch_images), expected_classes):
+            raise RuntimeError(f"runner must return a tensor of shape (batch, {expected_classes})")
         scores = torch.softmax(logits.float(), dim=-1).cpu()
         values, indices = torch.topk(scores, k=top_k, dim=-1)
         predictions = []

@@ -1,9 +1,9 @@
 # Release verification
 
-`tutorials/resnet50_classification_colab.ipynb` (`TASK-INFERENCE`) is a **release candidate** until
+`tutorials/resnet50_classification_colab.ipynb` (`E2E`) is a **release candidate** until
 the exact notebook revision has executed top-to-bottom in a clean supported runtime. Unit tests,
 JSON validation, code-cell compilation, and `tools/validate_release_assets.py` are necessary
-checks but are **not** runtime evidence under DIMER Notebook Specification 1.1. This file is
+checks but are **not** runtime evidence under DIMER Notebook Specification 2.0. This file is
 the durable release-gate record for the notebook.
 
 ## Automatic coverage (static, every pull request)
@@ -13,8 +13,8 @@ CI runs `tools/validate_release_assets.py`, which checks:
 - notebook JSON parses; every code cell compiles as plain Python (no `%`/`!` magics); no
   persisted outputs or execution counts; no unresolved placeholder markers; every code cell
   is preceded by an explanatory markdown cell;
-- exactly one tutorial notebook, named in `tutorials/README.md` with its `TASK-INFERENCE`
-  profile, the notebook-spec version and the standalone carrier; `metadata.dimer` declares that profile, spec `1.1`, `standalone: true` and `generated_from` (repository, module commit, module SHA-256, generator);
+- exactly one tutorial notebook, named in `tutorials/README.md` with its `E2E`
+  profile, the notebook-spec version and the standalone carrier; `metadata.dimer` declares that profile, spec `2.0`, `standalone: true` and `generated_from` (repository, module commit, module SHA-256, generator);
 - the standalone carrier (ST1–ST6, PAR1–PAR3): no clone, repository install or repository import on the
   primary path; exactly one cell tagged `embedded_module` equal to `src/resnet50_classification_pipeline/pipeline.py`
   after the generator's documented rewrites; the inline `MANIFEST` equal to the committed snapshot manifest and the
