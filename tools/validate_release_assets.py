@@ -434,7 +434,8 @@ def _validate_embedded_module(path: Path, notebook: dict, build) -> int:
         cell["metadata"]["dimer"]["embedded_module"] == f"src/{PACKAGE}/pipeline.py",
         f"{path.name}: embedded_module tag must name src/{PACKAGE}/pipeline.py",
     )
-    expected = build.apply_rewrites(_read(ROOT / "src" / PACKAGE / "pipeline.py"))
+    rewrites = _load_tool("notebook_template").TEMPLATE.get("rewrites", build.REWRITES)
+    expected = build.apply_rewrites(_read(ROOT / "src" / PACKAGE / "pipeline.py"), rewrites)
     _check(
         _cell_source(cell).rstrip("\n") + "\n" == expected,
         f"{path.name}: embedded module differs from src/{PACKAGE}/pipeline.py (PAR1); regenerate the notebook",
