@@ -96,6 +96,7 @@ def template_contract() -> dict[str, str]:
         "rewrites": "OPTIONAL list of [regex, replacement] applied to the embedded modules, each matching exactly once (default DEFAULT_REWRITES)",
         "extra_weights": "OPTIONAL list of {key, var, dir, identity: [ID_CONST, REV_CONST], stage, verify} for additional pinned snapshots",
         "model_load": "OPTIONAL replacement for the default `<pipeline_class>.from_pretrained(weights_dir=WEIGHTS_DIR)` expression",
+        "package_dir": "OPTIONAL repository-relative directory of the package (default 'src/<package>'; e.g. 'mitra_pipeline' for a root-level package)",
     }
 
 
@@ -252,7 +253,8 @@ def _read_manifest(repo: Path, key: str) -> dict[str, Any]:
 
 def load_context(repo: Path, template: dict[str, Any], revision: str | None = None) -> dict[str, Any]:
     pkg = template["package"]
-    pkg_dir = repo / "src" / pkg
+    pkg_rel = template.get("package_dir", f"src/{pkg}")
+    pkg_dir = repo / pkg_rel
     modules = list(template.get("modules", ["pipeline.py"]))
     entry = template.get("entry_module", "pipeline.py")
     if entry not in modules:
@@ -287,16 +289,17 @@ def load_context(repo: Path, template: dict[str, Any], revision: str | None = No
             raise SystemExit(f"extra manifest {spec['key']} identity != module constants")
         extra.append({**spec, "manifest": em})
     rewrites = template.get("rewrites", DEFAULT_REWRITES)
-    rel = [f"src/{pkg}/{m}" for m in order]
+    rel = [f"{pkg_rel}/{m}" for m in order]
     return {
         "pkg": pkg,
+        "pkg_rel": pkg_rel,
         "modules": order,
         "module_rels": rel,
-        "entry_rel": f"src/{pkg}/{entry}",
+        "entry_rel": f"{pkg_rel}/{entry}",
         "texts": texts,
         "embedded": apply_rewrites(texts, rewrites),
         "module_sha256": hashlib.sha256("".join(texts[m] for m in order).encode("utf-8")).hexdigest(),
-        "per_module_sha256": {f"src/{pkg}/{m}": hashlib.sha256(texts[m].encode("utf-8")).hexdigest() for m in order},
+        "per_module_sha256": {f"{pkg_rel}/{m}": hashlib.sha256(texts[m].encode("utf-8")).hexdigest() for m in order},
         "module_revision": revision or _head_revision(repo),
         "manifest": manifest,
         "extra_weights": extra,
@@ -331,7 +334,7 @@ def render(repo: Path, template: dict[str, Any], revision: str | None = None) ->
     carried = (
         f"the repository's pipeline module (`{ctx['entry_rel']}` at revision `{ctx['module_revision'][:12]}`) verbatim in Section 2"
         if n_mod == 1
-        else f"the repository's package ({n_mod} modules under `src/{ctx['pkg']}/`, at revision `{ctx['module_revision'][:12]}`) verbatim in Section 2"
+        else f"the repository's package ({n_mod} modules under `{ctx['pkg_rel']}/`, at revision `{ctx['module_revision'][:12]}`) verbatim in Section 2"
     )
     header = (
         f"# {template['title']}\n\n{badges}\n\n"
@@ -388,9 +391,9 @@ def render(repo: Path, template: dict[str, Any], revision: str | None = None) ->
     )
 
     for i, m in enumerate(ctx["modules"]):
-        rel = f"src/{ctx['pkg']}/{m}"
+        rel = f"{ctx['pkg_rel']}/{m}"
         if i == 0:
-            title = f"## 2. Pipeline code (carried verbatim from `src/{ctx['pkg']}/` @ `{ctx['module_revision'][:12]}`)"
+            title = f"## 2. Pipeline code (carried verbatim from `{ctx['pkg_rel']}/` @ `{ctx['module_revision'][:12]}`)"
             intro = (
                 f"\n\nThe next {n_mod} cell(s) **are** the repository's package, module by module in dependency order: the pinned identity constants, "
                 "snapshot verification (`verify_snapshot`), staged download (`stage_missing_files`), the named operational ceilings, the public "
