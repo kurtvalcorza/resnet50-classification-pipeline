@@ -138,7 +138,7 @@ INPUT_SCHEMA: dict[str, Any] = {
 }
 
 
-def _check_inputs(images: Any, top_k: int) -> list[Image.Image]:
+def _check_inputs(images: Any, top_k: int, max_classes: int = NUM_CLASSES) -> list[Image.Image]:
     """Raise TypeError/ValueError naming the first violated ceiling; return the images as a list."""
     if isinstance(images, Image.Image):
         images = [images]
@@ -154,8 +154,8 @@ def _check_inputs(images: Any, top_k: int) -> list[Image.Image]:
             raise ValueError(f"image side outside 1..MAX_IMAGE_SIDE={MAX_IMAGE_SIDE} px: {image.size}")
     if isinstance(top_k, bool) or not isinstance(top_k, int):
         raise TypeError("top_k must be an int")
-    if not 1 <= top_k <= NUM_CLASSES:
-        raise ValueError(f"top_k must be between 1 and NUM_CLASSES={NUM_CLASSES}")
+    if not 1 <= top_k <= max_classes:
+        raise ValueError(f"top_k must be between 1 and {max_classes}")
     return list(images)
 
 
@@ -164,13 +164,14 @@ def validate_inputs(
     top_k: int = DEFAULT_TOP_K,
     *,
     names: Sequence[str] | None = None,
+    num_classes: int = NUM_CLASSES,
 ) -> dict[str, Any]:
     """Validation stage: return the input manifest (schema, per-input observations, verdict).
 
     Rejection is reported by raising exactly as ``predict`` would; a caller that wants the
     finding recorded catches the exception and stores ``str(exc)`` under ``findings``.
     """
-    checked = _check_inputs(images, top_k)
+    checked = _check_inputs(images, top_k, max_classes=num_classes)
     if names is not None and len(names) != len(checked):
         raise ValueError("names must have one entry per image")
     return {
@@ -350,7 +351,9 @@ class ResNet50ClassificationPipeline:
         weights_path = root / WEIGHTS_FILE
         if weights_path.is_file():
             sd = load_file(weights_path)
-            backbone_sd = {k: v for k, v in sd.items() if not k.startswith("fc.") and not k.startswith("head.")}
+            backbone_sd = {
+                k: v for k, v in sd.items() if not k.startswith("fc.") and not k.startswith("head.")
+            }
             model.load_state_dict(backbone_sd, strict=False)
 
         model.to(resolved_device)
@@ -423,7 +426,8 @@ class ResNet50ClassificationPipeline:
             out_path = Path(output_dir)
             out_path.mkdir(parents=True, exist_ok=True)
             safetensors_path = out_path / WEIGHTS_FILE
-            save_file({k: v.detach().cpu().contiguous() for k, v in model.state_dict().items()}, safetensors_path)
+            tensors = {k: v.detach().cpu().contiguous() for k, v in model.state_dict().items()}
+            save_file(tensors, safetensors_path)
             config_payload = {
                 "architecture": "resnet50",
                 "num_classes": num_classes,
@@ -443,22 +447,25 @@ class ResNet50ClassificationPipeline:
         return pipeline, {"history": history, "class_names": list(class_names), "device": resolved_device}
 
     def _validate(self, images: Any, top_k: int) -> list[Image.Image]:
-        return _check_inputs(images, top_k)
+        max_classes = len(self.labels) if self.labels else NUM_CLASSES
+        return _check_inputs(images, top_k, max_classes=max_classes)
 
     def predict(
-        self, images: Image.Image | Sequence[Image.Image], top_k: int = DEFAULT_TOP_K
+        self, images: Image.Image | Sequence[Image.Image], top_k: int | None = None
     ) -> dict[str, Any]:
         """Classify images; ``score`` is a softmax score, not a calibrated probability."""
         import torch
 
-        batch_images = self._validate(images, top_k)
+        active_classes = len(self.labels) if self.labels else NUM_CLASSES
+        resolved_top_k = min(DEFAULT_TOP_K, active_classes) if top_k is None else top_k
+        batch_images = self._validate(images, resolved_top_k)
         batch = torch.stack([self._transform(image.convert("RGB")) for image in batch_images])
         logits = self._runner(batch)
-        expected_classes = len(self.labels) if self.labels else NUM_CLASSES
+        expected_classes = active_classes
         if not isinstance(logits, torch.Tensor) or logits.shape != (len(batch_images), expected_classes):
             raise RuntimeError(f"runner must return a tensor of shape (batch, {expected_classes})")
         scores = torch.softmax(logits.float(), dim=-1).cpu()
-        values, indices = torch.topk(scores, k=top_k, dim=-1)
+        values, indices = torch.topk(scores, k=resolved_top_k, dim=-1)
         predictions = []
         for image_values, image_indices in zip(values.tolist(), indices.tolist(), strict=True):
             image_values = [float(s) for s in image_values]
@@ -472,7 +479,7 @@ class ResNet50ClassificationPipeline:
             )
         return {
             "predictions": predictions,
-            "top_k": top_k,
+            "top_k": resolved_top_k,
             "decision_rule": DECISION_RULE,
             "device": self.device,
             "source": self.source,
