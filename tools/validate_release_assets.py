@@ -26,6 +26,8 @@ NOTEBOOK_NAME = "resnet50_classification_colab.ipynb"
 EXPECTED_PROFILE = "TASK-INFERENCE"
 EXPECTED_MODEL_ID = "timm/resnet50.a1_in1k"
 PIPELINE_CLASS = "ResNet50ClassificationPipeline"
+# INF1: the exact load expression the model cell must use (a template's `model_load` may extend it).
+MODEL_LOAD_EXPR = f"{PIPELINE_CLASS}.from_pretrained(weights_dir=WEIGHTS_DIR)"
 # Additional 40-hex revisions a document may legitimately cite (none by default).
 KNOWN_SHAS: frozenset[str] = frozenset(())
 # Colab form gates that must default to the non-interactive sample path.
@@ -507,8 +509,8 @@ def _validate_notebook_content(
     leaked = [marker for marker in FORBIDDEN_OUTSIDE_MODULE if marker in outside]
     _check(not leaked, f"{path.name}: direct library use outside the carried module cell (G2): {leaked}")
     _check(
-        f"pipe = {PIPELINE_CLASS}.from_pretrained(weights_dir=WEIGHTS_DIR)" in outside,
-        f"{path.name}: must load through {PIPELINE_CLASS}.from_pretrained(weights_dir=WEIGHTS_DIR) (INF1)",
+        f"pipe = {MODEL_LOAD_EXPR}" in outside,
+        f"{path.name}: must load through {MODEL_LOAD_EXPR} (INF1)",
     )
     _validate_gates(path, code_cells)
     _validate_bootstrap_guard(path, code_cells)
