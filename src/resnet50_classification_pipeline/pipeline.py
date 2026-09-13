@@ -330,31 +330,53 @@ class ResNet50ClassificationPipeline:
         device: str | None = None,
         weights_dir: str | Path | None = None,
         output_dir: str | Path | None = None,
+        allow_download: bool = False,
     ) -> tuple[ResNet50ClassificationPipeline, dict[str, Any]]:
         """Fine-tune the ResNet-50 model on custom classes 100% in-kernel."""
         import timm
         import torch
         import torch.nn.functional as F
-        from safetensors.torch import load_file, save_file
+        from safetensors.torch import save_file
         from torch.utils.data import DataLoader, Dataset
 
         root = Path(weights_dir or DEFAULT_WEIGHTS_DIR)
         resolved_device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
         num_classes = len(class_names)
+        if num_classes < 2:
+            raise ValueError(f"classification requires at least 2 classes, got {num_classes}")
         arch_name = MODEL_ID.split("/", 1)[1]
 
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
 
-        model = timm.create_model(arch_name, pretrained=False, num_classes=num_classes)
-        weights_path = root / WEIGHTS_FILE
-        if weights_path.is_file():
-            sd = load_file(weights_path)
-            backbone_sd = {
-                k: v for k, v in sd.items() if not k.startswith("fc.") and not k.startswith("head.")
-            }
-            model.load_state_dict(backbone_sd, strict=False)
+        if (root / MANIFEST_NAME).is_file():
+            stage_missing_files(root, allow_download=allow_download)
+            verify_snapshot(root)
+            with open(root / CONFIG_FILE, encoding="utf-8") as fh:
+                config = json.load(fh)
+            snapshot_name = f"{config['architecture']}.{config['pretrained_cfg']['tag']}"
+            if snapshot_name != arch_name:
+                raise ValueError(f"snapshot config names {snapshot_name!r}, expected {arch_name!r}")
+            overlay = dict(config["pretrained_cfg"])
+            overlay["file"] = str(root / WEIGHTS_FILE)
+            model = timm.create_model(
+                arch_name,
+                pretrained=True,
+                pretrained_cfg_overlay=overlay,
+                num_classes=num_classes,
+            )
+        elif allow_download:
+            model = timm.create_model(
+                _hub_reference(MODEL_ID, revision=MODEL_REVISION),
+                pretrained=True,
+                num_classes=num_classes,
+            )
+        else:
+            raise FileNotFoundError(
+                f"no verified snapshot at {root} and allow_download=False; "
+                f"stage it with: hf download {MODEL_ID} --revision {MODEL_REVISION} --local-dir {root}"
+            )
 
         model.to(resolved_device)
         data_config = timm.data.resolve_model_data_config(model)
