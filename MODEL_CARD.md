@@ -7,7 +7,7 @@ date_published: "2023-04-05"
 date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt`, https://huggingface.co/api/models/timm/resnet50.a1_in1k)"
 ---
 
-# ResNet-50 a1_in1k (DIMER package v0.1.0) — Image Classification
+# ResNet-50 a1_in1k — Image Classification
 
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-timm%2Fresnet50.a1__in1k-ffcc4d?style=flat)](https://huggingface.co/timm/resnet50.a1_in1k)
 [![Upstream GitHub](https://img.shields.io/badge/Upstream%20GitHub-huggingface%2Fpytorch--image--models-181717?style=flat&logo=github&logoColor=white)](https://github.com/huggingface/pytorch-image-models)
