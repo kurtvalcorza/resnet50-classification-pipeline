@@ -625,7 +625,7 @@ The notebook MUST validate:
 ```text
 pre_logits.ndim == 2
 pre_logits.shape[0] == batch_size
-pre_logits.shape[1] == model.num_features
+pre_logits.shape[1] == model.head_hidden_size   # timm pre-logit width; MobileNetV4 differs from num_features
 all values finite
 ```
 
@@ -754,7 +754,7 @@ This measures representation usefulness without learning a parametric classifica
 For each model:
 
 ```text
-input dimension = model.num_features
+input dimension = model.head_hidden_size
 output dimension = 6
 ```
 
@@ -831,6 +831,12 @@ earliest epoch
 The test set MUST NOT influence selection.
 
 Restore the selected epoch before held-out evaluation.
+
+Record two flags with every probe: `selected_at_first_epoch` (the probe barely trained; with a zero-initialised
+layer and AdamW this means the learning rate is too high) and `selected_at_epoch_cap` (validation loss was still
+falling at the last epoch, which is expected when the validation images are already separable). A local CPU run
+on 2026-09-26 found that lr 0.05 selected epoch 1 for five of the six backbones; lr 0.001 over 1000 epochs
+selected epochs 34–46 for ResNet-50, MobileNetV4 and SwinV2 and the cap for ConvNeXt, ViT and EVA-02.
 
 ---
 
@@ -1670,8 +1676,8 @@ USE_BYOD = False
 FEATURE_BATCH_SIZE = 8
 LATENCY_REPEATS = 10
 
-PROBE_EPOCHS = 200
-PROBE_LR = 0.05
+PROBE_EPOCHS = 1000
+PROBE_LR = 0.001   # lr 0.05 selected epoch 1 (a one-step probe) for 5 of 6 backbones
 PROBE_WEIGHT_DECAY = 1e-4
 
 KNN_K = 5
@@ -1774,7 +1780,7 @@ model.eval()
 
 feature matrix finite
 feature rows align with image IDs
-feature_dim == model.num_features
+feature_dim == model.head_hidden_size
 ```
 
 Probe:
