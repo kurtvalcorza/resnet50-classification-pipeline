@@ -109,3 +109,19 @@ real `hf_hub_download` fetch of all three manifest entries into a fresh `weights
 executed), and the standalone carrier itself — executing the carried module cell in a runtime that has no
 repository checkout — has been validated statically only (parity PASS), never run; the clean run will be the
 first execution of the standalone path, of the staging path, and of the CPU inference path against the real weights.
+
+## Supplemental modern image classification workshop — `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb`
+
+This entry applies only to the supplemental workshop notebook, not the primary tutorial executions above.
+
+### Maintainer-supplied successful Colab run — 2026-09-26
+
+The maintainer supplied the [executed notebook](execution-evidence/2026-09-26/DIMER_Modern_Image_Classification_Workshop.ipynb) and authorized merging PR #7 (merge commit `0546841`). The file is archived byte-for-byte, SHA-256 `344c4287f855ce7ee01aca2bfd386589e9f8f316832c55799e58e96b08b036fe`. All 19 code cells have execution counts, 40 saved outputs and zero saved errors. Code-cell sources match commit `51866463c6064bf08b38b79a65875949bf351163`, tutorial blob `fa421bc43ff710f1c76fba3e4b6223c0138ba58d`, apart from Colab-inserted `# @title` lines. Later commits on `main` that touch the notebook (`8b86f63` (Created using Colab)) change only markdown cells; its code cells are identical to the executed revision. This evidence commit does not change tutorial code.
+
+Scope: Default path: six frozen backbones (ResNet-50, MobileNetV4-Conv-Small, ConvNeXt-Tiny, ViT-B/16, SwinV2-Tiny, EVA-02 Base 448) on the pinned iNaturalist CC0 six-species sample, split 108 train / 24 validation / 48 test; 5-NN and a linear probe (full-batch AdamW, lr 0.001, 1,000 epochs, lowest validation cross-entropy). BYOD was not exercised.
+
+Saved runtime: Python 3.13.15, torch 2.14.0+cu130, torchvision 0.29.0, timm 1.0.29, safetensors 0.8.0, NumPy 2.1.3 (preloaded by the host kernel, retained), CUDA Tesla T4. Execution reaches the final completion summary. The separate exported files were not supplied, so their bytes/digests were not independently inspected. Saved counts run sequentially from 1 to 19; runtime freshness and absence of manual restarts/reruns are not independently established by the artifact.
+
+Results (sample-sanity measures on the built-in data, not general model rankings): Test 5-NN accuracy / probe accuracy / probe macro F1: ResNet-50 0.521 / 0.500 / 0.467, MobileNetV4 0.396 / 0.500 / 0.505, ConvNeXt-Tiny 0.771 / 0.729 / 0.727, ViT-B/16 0.812 / 0.792 / 0.789, SwinV2-Tiny 0.646 / 0.667 / 0.644, EVA-02 Base 448 0.833 / 0.896 / 0.896. Selected probe epochs: 35 (ResNet-50), 46 (MobileNetV4) and 34 (SwinV2); ConvNeXt, ViT and EVA-02 were selected at the 1,000-epoch cap and flagged `selected_at_epoch_cap`. No probe was selected at the first epoch. These values match a local CPU run of the same commit.
+
+Status remains **Candidate**. Merge approval and this successful default-path run do not close the optional-path (FULL/BYOD) or REL12 qualification gates, and `metadata.dimer.clean_runtime_evidence` in the notebook stays `pending` as authored (editing it would change the verified blob).
