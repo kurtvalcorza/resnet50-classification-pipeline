@@ -17,7 +17,7 @@ def test_modern_image_classification_workshop_is_valid_notebook() -> None:
     assert notebook["nbformat"] == 4
     assert notebook["cells"]
     markdown = "\n".join(_source(cell) for cell in notebook["cells"] if cell.get("cell_type") == "markdown")
-    assert "# DIMER Modern Image Classification Workshop" in markdown
+    assert "# DIMER Notebook: Modern Image Classification and Transfer Representations" in markdown
     assert "DIMER Notebook Specification:** `2.1`" in markdown
 
     for index, cell in enumerate(notebook["cells"]):
