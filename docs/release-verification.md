@@ -124,4 +124,72 @@ Saved runtime: Python 3.13.15, torch 2.14.0+cu130, torchvision 0.29.0, timm 1.0.
 
 Results (sample-sanity measures on the built-in data, not general model rankings): Test 5-NN accuracy / probe accuracy / probe macro F1: ResNet-50 0.521 / 0.500 / 0.467, MobileNetV4 0.396 / 0.500 / 0.505, ConvNeXt-Tiny 0.771 / 0.729 / 0.727, ViT-B/16 0.812 / 0.792 / 0.789, SwinV2-Tiny 0.646 / 0.667 / 0.644, EVA-02 Base 448 0.833 / 0.896 / 0.896. Selected probe epochs: 35 (ResNet-50), 46 (MobileNetV4) and 34 (SwinV2); ConvNeXt, ViT and EVA-02 were selected at the 1,000-epoch cap and flagged `selected_at_epoch_cap`. No probe was selected at the first epoch. These values match a local CPU run of the same commit.
 
-Status remains **Candidate**. Merge approval and this successful default-path run do not close the optional-path (FULL/BYOD) or REL12 qualification gates, and `metadata.dimer.clean_runtime_evidence` in the notebook stays `pending` as authored (editing it would change the verified blob).
+Status remains **Candidate**. Merge approval and this successful default-path run do not close the optional-path (BYOD and resolution-stress) or REL12 qualification gates (this notebook has no STANDARD/FULL tiers; SwinV2 and EVA-02 are part of the default run above), and `metadata.dimer.clean_runtime_evidence` in the notebook stays `pending` as authored (editing it would change the verified blob).
+
+
+## Modern image workshop: Notebook Review Framework v1 findings — revision 0.2.0-candidate (2026-09-28)
+
+A review under the Notebook Review Framework v1 examined commit `cf3dbad` (notebook blob `3083a52e`) and concluded **Needs revision**. It reported six major findings and five minor ones. The review and its probes are archived in [`reviews/2026-09-27-notebook-review/`](reviews/2026-09-27-notebook-review/). Revision `0.2.0-candidate` (notebook blob `fd59129eea28`) addresses every item.
+
+`tests/test_modern_workshop_review_fixes.py` has 43 tests that execute the notebook's own cells: the 5-NN rule, the metric validation, probe fitting, SafeTensors export and artifact reconstruction, the BYOD loader and BYOD run, resolution stress, the validation-only activity and the diagnostic cells. A tiny fake backbone replaces the pretrained checkpoints. 42 of the tests fail on `cf3dbad`; the one that passes there is the committed-notebook-is-clean guard.
+
+| Finding | Correction in 0.2.0 | Acceptance check |
+|---|---|---|
+| **M1** (major): 5-NN metrics used the argmax of the vote fractions, which ignores the cosine-sum tie-break | `classification_metrics` takes the model's own decision (`predicted_ids`); 5-NN passes its tie-aware decision, and the vote fractions stay unmodified as scores. The built-in and BYOD paths share one `knn_predict` | Unique majority, 2–2–1 ties (both directions), a five-way tie and equal summed similarity (resolved by lower class ID) are each scored by the decision. Real-model effect below |
+| **M2** (major): ZIPs were flattened and reused a shared folder; CSV paths were not contained | The whole archive is validated first (unsafe paths, symbolic links, 1 GB limit, members that would land on the same file), then unpacked into a new notebook-owned folder that keeps its structure; a failed attempt's folder is removed. `labels.csv` paths must be relative, stay inside the dataset and avoid symbolic links. Cheap table checks run before any image is decoded. A user directory is never modified | Directory and ZIP give identical records with nested folders; a same-named unreferenced member cannot replace a referenced image; colliding members are refused; a complete-then-incomplete retry fails without reusing files; `..`, absolute, drive-letter and symlinked paths are refused; no image is decoded before the table checks pass |
+| **M3** (major): the resolution-stress switch performed no experiment | Implemented: each test photo is reduced so its longer side is 96 or 160 px, the native transform enlarges it again, and the probe rebuilt from its saved artifact scores it. Nothing is refitted; each row records the probe SHA-256. When disabled, the notebook says it was skipped | Every model × {original, 96px, 160px} row exists with the saved probe's digest; no refit occurs; the backbone receives images whose longer side is 96 and 160 px; disabled mode produces no rows |
+| **M4** (major): the "change one thing" activity displayed test results | A validation-only activity cell writes its plan first, fits probes on nested subsets, and reports validation loss and accuracy, the selected epoch, the training count and the change from the full set under `activity/`. `fit_probe` no longer requires test features. Section 15 is labelled a predeclared test curve | A sentinel that fails on any read of test features or the test split passes; the plan file exists; the activity is off by default |
+| **M5** (major): diagnostics were computed but not shown | One training photo per species is shown before modelling. Section 11 explains every metric, with a worked accuracy-versus-log-loss contrast. Section 13 shows per-species recall, all six confusion matrices, and a deterministic gallery of real mistakes or disagreements (or says there are none). PCA plots are displayed, with explained variance and a caveat | Figures are shown, the gallery holds distinct real test photos in the hardest category first, "no mistakes" is stated rather than invented, and PCA is no longer closed without display |
+| **M6** (major): reload verified tensors but not the serialized artifact | `load_probe_artifact` rebuilds the probe from `manifest.json` and `probe.safetensors` alone. It checks the format, base identity and the file's recorded size and SHA-256 before loading, and validates tensor shapes, normalisation and distinct classes. `reload_probe_verify` compares probabilities **and decoded species labels** with the class order the probe was trained on. BYOD uses the same functions | A reversed `class_order`, a false or changed probe digest, a missing manifest, a wrong dimension, a wrong base revision and duplicate classes are each rejected; an unchanged artifact reloads with difference 0.0 |
+| Minor: probability validation | Scores of the wrong shape, non-finite or out of [0, 1], rows not summing to 1, and out-of-range class IDs are rejected before metrics | Fault injections, including every score set to 2.0 |
+| Minor: BYOD disclosure | "Enforced requirements" replaces "recommended limits", with a point-of-use privacy warning ("not an on-premises system") and a description of what the outputs contain | Static checks |
+| Minor: runtime guidance | Section 4 describes the kernel-Python install actually used. Troubleshooting says Runtime → Restart session (not delete runtime) and drops the "default tier" reference | Static checks |
+| Minor: records | `predictions.csv` carries every class score; BYOD writes predictions, per-class metrics, provenance and a checked inventory; built-in and BYOD result scopes are labelled | BYOD run test checks the files, headers and literal labels |
+| Minor: limits and latency | The limitations state the 48-image test size (about 2.1 points per photo), the observer overlap (now counted and exported) and possible pretraining overlap. Latency is named "backbone feature-forward" and its exclusions stated | Static checks |
+
+### Real-model CPU pre-flight (2026-09-28)
+
+The revised notebook was executed top to bottom on CPU with the real pinned corpus and all six pinned checkpoints. The runtime was Python 3.12, torch 2.14.0+cpu, timm 1.0.29, NumPy 2.5.3 and matplotlib 3.10.6. Resolution stress and the validation-only activity were switched on for this run. All 21 code cells completed without error; the script and results are `reviews/2026-09-27-notebook-review/cpu_preflight*`.
+
+- **Probe results reproduced exactly:** probe accuracy, macro-F1 and the selected epochs equal the recorded 2026-09-26 Colab T4 run. The epochs are 35, 46, 1000, 1000, 34 and 1000, and the split digest is `842433b7…`.
+- **The M1 correction changes the published 5-NN results.** With the new code on CPU, the old argmax rule reproduces the recorded values exactly. The tie-aware rule the specification requires gives:
+
+  | Model | Recorded (argmax) | Corrected (tie rule) | Test rows with a tied vote | Decisions changed |
+  |---|---|---|---|---|
+  | ResNet-50 | 0.521 | **0.500** | 9 | 6 |
+  | MobileNetV4-Conv-Small | 0.396 | **0.417** | 9 | 3 |
+  | ConvNeXt-Tiny | 0.771 | **0.729** | 7 | 4 |
+  | ViT-B/16 | 0.812 | **0.792** | 4 | 2 |
+  | SwinV2-Tiny | 0.646 | **0.583** | 8 | 6 |
+  | EVA-02 Base 448 | 0.833 | 0.833 | 0 | 0 |
+
+  The historical figures above stay as recorded for their revision; revision 0.2.0 reports the corrected values.
+- **Diagnostics:** 14 test photos were unanimous-correct, 19 majority-correct, 8 split and 7 shared hard cases. Recall ranges from 0.25 (several species for ResNet-50) to 1.00. The confusion matrices, the disagreement gallery and all PCA plots were rendered and saved.
+- **Observer overlap:** 31 of 117 observers have photos in more than one split.
+- **Resolution stress** (test accuracy at original → 160 px → 96 px):
+
+  | Model | Original | 160 px | 96 px |
+  |---|---|---|---|
+  | ResNet-50 | 0.500 | 0.417 | 0.417 |
+  | MobileNetV4-Conv-Small | 0.500 | 0.438 | 0.458 |
+  | ConvNeXt-Tiny | 0.729 | 0.646 | 0.604 |
+  | ViT-B/16 | 0.792 | 0.667 | 0.646 |
+  | SwinV2-Tiny | 0.667 | 0.521 | 0.417 |
+  | EVA-02 Base 448 | 0.896 | 0.688 | 0.667 |
+
+  The `original` rows equal the main results, which confirms that the probes were reused unchanged.
+- **Validation-only activity:** it produced the 6/12/18-per-class table without reading test data. With 6 photos per species, the validation-loss increase over the full set ranged from +0.035 (EVA-02) to +0.469 (ResNet-50).
+
+- **BYOD with real backbones:** a ZIP built from the cached real photos was run through the BYOD cell with MobileNetV4-Conv-Small and ViT-B/16.
+  - **Input:** the ZIP kept nested `birds/<species>/…` folders and used explicit 120/30/30 splits. The labels were `0`, `001`, `NA`, `house finch`, `American Goldfinch` and a 148-character Unicode label.
+  - **Labels:** every label was preserved exactly in the probe manifests and in the `predictions.csv` score columns.
+  - **Results:** 5-NN / probe accuracy was 0.567 / 0.467 for MobileNetV4 and 0.800 / 0.833 for ViT-B/16. Reload parity was 0.0 for both.
+  - **Outputs:** the BYOD inventory (summary, predictions, class metrics, provenance and probes) was written and checked. The run is recorded in `cpu_byod_preflight*`.
+
+Code cells changed, so the 2026-09-26 Colab record does not describe this revision. **Status: Candidate.** The following evidence is still required:
+
+- a fresh Colab T4 default `Run all` of revision 0.2.0;
+- the resolution-stress and validation-activity paths on the hosted runtime;
+- a hosted BYOD run with a representative dataset.
+
+The review's learner-observation recommendation remains open.

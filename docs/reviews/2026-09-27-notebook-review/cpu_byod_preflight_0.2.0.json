@@ -1,0 +1,56 @@
+{
+  "stdout": "BYOD — MobileNetV4-Conv-Small\nBYOD — ViT-B/16\nBYOD complete. Files written under outputs/modern_image_classification/byod\n  outputs/modern_image_classification/byod/summary.csv\n  outputs/modern_image_classification/byod/predictions.csv\n  outputs/modern_image_classification/byod/class_metrics.csv\n  outputs/modern_image_classification/byod/provenance.json\n  outputs/modern_image_classification/byod/probes/mobilenetv4/probe.safetensors\n  outputs/modern_image_classification/byod/probes/mobilenetv4/manifest.json\n  outputs/modern_image_classification/byod/probes/vit/probe.safetensors\n  outputs/modern_image_classification/byod/probes/vit/manifest.json\n{'model': 'MobileNetV4-Conv-Small', 'knn5_accuracy': 0.5666666666666667, 'probe_accuracy': 0.4666666666666667, 'probe_macro_f1': 0.44629629629629636, 'best_epoch': 6}\n{'model': 'ViT-B/16', 'knn5_accuracy': 0.8, 'probe_accuracy': 0.8333333333333334, 'probe_macro_f1': 0.8343499093499095, 'best_epoch': 13}\n",
+  "summary": [
+    {
+      "model": "MobileNetV4-Conv-Small",
+      "model_key": "mobilenetv4",
+      "classes": 6,
+      "train_images": 120,
+      "validation_images": 30,
+      "test_images": 30,
+      "knn5_accuracy": 0.5666666666666667,
+      "probe_accuracy": 0.4666666666666667,
+      "probe_macro_f1": 0.44629629629629636,
+      "probe_top3_accuracy": 0.9,
+      "probe_log_loss": 1.3584003727341882,
+      "best_epoch": 6,
+      "validation_loss": 1.6352003812789917,
+      "reload_max_abs_probability_diff": 0.0
+    },
+    {
+      "model": "ViT-B/16",
+      "model_key": "vit",
+      "classes": 6,
+      "train_images": 120,
+      "validation_images": 30,
+      "test_images": 30,
+      "knn5_accuracy": 0.8,
+      "probe_accuracy": 0.8333333333333334,
+      "probe_macro_f1": 0.8343499093499095,
+      "probe_top3_accuracy": 0.9333333333333333,
+      "probe_log_loss": 0.6025812968713747,
+      "best_epoch": 13,
+      "validation_loss": 0.7729198932647705,
+      "reload_max_abs_probability_diff": 0.0
+    }
+  ],
+  "files": [
+    "class_metrics.csv",
+    "predictions.csv",
+    "probes/mobilenetv4/manifest.json",
+    "probes/mobilenetv4/probe.safetensors",
+    "probes/vit/manifest.json",
+    "probes/vit/probe.safetensors",
+    "provenance.json",
+    "summary.csv"
+  ],
+  "class_order": [
+    "0",
+    "001",
+    "American Goldfinch",
+    "NA",
+    "house finch",
+    "junco — éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+  ],
+  "predictions_header": "model_key,image_id,filename,gold_label,predicted_label,knn_predicted_label,score_0,score_001,score_American Goldfinch,score_NA,score_house finch,score_junco — éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+}
