@@ -1,0 +1,420 @@
+{
+  "cells": [
+    {
+      "cell": "4f54b044",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "aa91b536",
+      "status": "ok",
+      "seconds": 6.3
+    },
+    {
+      "cell": "e04f3109",
+      "status": "ok",
+      "seconds": 44.3
+    },
+    {
+      "cell": "1b442017",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "gallery-train",
+      "status": "ok",
+      "seconds": 0.2
+    },
+    {
+      "cell": "f470276e",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "f370927c",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "77686cef",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "6e025182",
+      "status": "ok",
+      "seconds": 1506.7
+    },
+    {
+      "cell": "7aaa53fc",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "8e6fccd6",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "a60da6ff",
+      "status": "ok",
+      "seconds": 1.6
+    },
+    {
+      "cell": "7b82d0ea",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "f3c4811d",
+      "status": "ok",
+      "seconds": 286.3
+    },
+    {
+      "cell": "cd6f5ec4",
+      "status": "ok",
+      "seconds": 2.0
+    },
+    {
+      "cell": "b86cf657",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "23084f05",
+      "status": "ok",
+      "seconds": 177.1
+    },
+    {
+      "cell": "22e6f1e2",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "71cf319a",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "3c8af07b",
+      "status": "ok",
+      "seconds": 0.0
+    },
+    {
+      "cell": "activity-validation",
+      "status": "ok",
+      "seconds": 15.9
+    }
+  ],
+  "knn_tie_comparison": {
+    "resnet50": {
+      "tie_aware_accuracy": 0.5,
+      "argmax_accuracy": 0.5208333333333334,
+      "rows_with_tied_top_vote": 9,
+      "rows_whose_decision_changes": 6,
+      "changed_image_ids": [
+        "test-014",
+        "test-032",
+        "test-035",
+        "test-041",
+        "test-045",
+        "test-046"
+      ]
+    },
+    "mobilenetv4": {
+      "tie_aware_accuracy": 0.4166666666666667,
+      "argmax_accuracy": 0.3958333333333333,
+      "rows_with_tied_top_vote": 9,
+      "rows_whose_decision_changes": 3,
+      "changed_image_ids": [
+        "test-009",
+        "test-021",
+        "test-023"
+      ]
+    },
+    "convnext": {
+      "tie_aware_accuracy": 0.7291666666666666,
+      "argmax_accuracy": 0.7708333333333334,
+      "rows_with_tied_top_vote": 7,
+      "rows_whose_decision_changes": 4,
+      "changed_image_ids": [
+        "test-003",
+        "test-004",
+        "test-023",
+        "test-042"
+      ]
+    },
+    "vit": {
+      "tie_aware_accuracy": 0.7916666666666666,
+      "argmax_accuracy": 0.8125,
+      "rows_with_tied_top_vote": 4,
+      "rows_whose_decision_changes": 2,
+      "changed_image_ids": [
+        "test-006",
+        "test-039"
+      ]
+    },
+    "swinv2": {
+      "tie_aware_accuracy": 0.5833333333333334,
+      "argmax_accuracy": 0.6458333333333334,
+      "rows_with_tied_top_vote": 8,
+      "rows_whose_decision_changes": 6,
+      "changed_image_ids": [
+        "test-009",
+        "test-027",
+        "test-028",
+        "test-036",
+        "test-041",
+        "test-042"
+      ]
+    },
+    "eva02": {
+      "tie_aware_accuracy": 0.8333333333333334,
+      "argmax_accuracy": 0.8333333333333334,
+      "rows_with_tied_top_vote": 0,
+      "rows_whose_decision_changes": 0,
+      "changed_image_ids": []
+    }
+  },
+  "main": {
+    "resnet50": {
+      "knn": 0.5,
+      "probe": 0.5,
+      "macro_f1": 0.4668915879442195,
+      "log_loss": 1.753746397829798,
+      "best_epoch": 35,
+      "reload_diff": 0.0
+    },
+    "mobilenetv4": {
+      "knn": 0.4166666666666667,
+      "probe": 0.5,
+      "macro_f1": 0.5048534798534798,
+      "log_loss": 1.4480060851870071,
+      "best_epoch": 46,
+      "reload_diff": 0.0
+    },
+    "convnext": {
+      "knn": 0.7291666666666666,
+      "probe": 0.7291666666666666,
+      "macro_f1": 0.7271929824561404,
+      "log_loss": 1.132521806672403,
+      "best_epoch": 1000,
+      "reload_diff": 0.0
+    },
+    "vit": {
+      "knn": 0.7916666666666666,
+      "probe": 0.7916666666666666,
+      "macro_f1": 0.7885477582846003,
+      "log_loss": 0.8967394752230158,
+      "best_epoch": 1000,
+      "reload_diff": 0.0
+    },
+    "swinv2": {
+      "knn": 0.5833333333333334,
+      "probe": 0.6666666666666666,
+      "macro_f1": 0.6435947265668629,
+      "log_loss": 1.0550520073142056,
+      "best_epoch": 34,
+      "reload_diff": 0.0
+    },
+    "eva02": {
+      "knn": 0.8333333333333334,
+      "probe": 0.8958333333333334,
+      "macro_f1": 0.8957080200501254,
+      "log_loss": 0.3669891522226793,
+      "best_epoch": 1000,
+      "reload_diff": 0.0
+    }
+  },
+  "resolution_stress": [
+    {
+      "model": "ResNet-50",
+      "model_key": "resnet50",
+      "condition": "original",
+      "n_images": 48,
+      "accuracy": 0.5,
+      "macro_f1": 0.4668915879442195,
+      "log_loss": 1.753746397829798,
+      "probe_sha256": "8bb3be05cb22f2f9f9d40c7d1861d01ec9d4a9d342780a8377ae5dd89f23c243"
+    },
+    {
+      "model": "ResNet-50",
+      "model_key": "resnet50",
+      "condition": "96px",
+      "n_images": 48,
+      "accuracy": 0.4166666666666667,
+      "macro_f1": 0.407936507936508,
+      "log_loss": 2.9549137779837396,
+      "probe_sha256": "8bb3be05cb22f2f9f9d40c7d1861d01ec9d4a9d342780a8377ae5dd89f23c243"
+    },
+    {
+      "model": "ResNet-50",
+      "model_key": "resnet50",
+      "condition": "160px",
+      "n_images": 48,
+      "accuracy": 0.4166666666666667,
+      "macro_f1": 0.4094627594627595,
+      "log_loss": 2.3469618534483243,
+      "probe_sha256": "8bb3be05cb22f2f9f9d40c7d1861d01ec9d4a9d342780a8377ae5dd89f23c243"
+    },
+    {
+      "model": "MobileNetV4-Conv-Small",
+      "model_key": "mobilenetv4",
+      "condition": "original",
+      "n_images": 48,
+      "accuracy": 0.5,
+      "macro_f1": 0.5048534798534798,
+      "log_loss": 1.4480060851870071,
+      "probe_sha256": "a7125534fea3bd64273bbcbfc5c70dadda0d33b3ad67dce4ca9a47532b327c33"
+    },
+    {
+      "model": "MobileNetV4-Conv-Small",
+      "model_key": "mobilenetv4",
+      "condition": "96px",
+      "n_images": 48,
+      "accuracy": 0.4583333333333333,
+      "macro_f1": 0.4448355737829422,
+      "log_loss": 1.776107925507907,
+      "probe_sha256": "a7125534fea3bd64273bbcbfc5c70dadda0d33b3ad67dce4ca9a47532b327c33"
+    },
+    {
+      "model": "MobileNetV4-Conv-Small",
+      "model_key": "mobilenetv4",
+      "condition": "160px",
+      "n_images": 48,
+      "accuracy": 0.4375,
+      "macro_f1": 0.431734360410831,
+      "log_loss": 1.555938421643021,
+      "probe_sha256": "a7125534fea3bd64273bbcbfc5c70dadda0d33b3ad67dce4ca9a47532b327c33"
+    },
+    {
+      "model": "ConvNeXt-Tiny",
+      "model_key": "convnext",
+      "condition": "original",
+      "n_images": 48,
+      "accuracy": 0.7291666666666666,
+      "macro_f1": 0.7271929824561404,
+      "log_loss": 1.132521806672403,
+      "probe_sha256": "831fd2a875f87989273dc3ac9cc7501c29dbb658eeb54ca60a5b3e40d550e011"
+    },
+    {
+      "model": "ConvNeXt-Tiny",
+      "model_key": "convnext",
+      "condition": "96px",
+      "n_images": 48,
+      "accuracy": 0.6041666666666666,
+      "macro_f1": 0.6173285048285048,
+      "log_loss": 1.6638880459337761,
+      "probe_sha256": "831fd2a875f87989273dc3ac9cc7501c29dbb658eeb54ca60a5b3e40d550e011"
+    },
+    {
+      "model": "ConvNeXt-Tiny",
+      "model_key": "convnext",
+      "condition": "160px",
+      "n_images": 48,
+      "accuracy": 0.6458333333333334,
+      "macro_f1": 0.662159331896174,
+      "log_loss": 1.6142817883006684,
+      "probe_sha256": "831fd2a875f87989273dc3ac9cc7501c29dbb658eeb54ca60a5b3e40d550e011"
+    },
+    {
+      "model": "ViT-B/16",
+      "model_key": "vit",
+      "condition": "original",
+      "n_images": 48,
+      "accuracy": 0.7916666666666666,
+      "macro_f1": 0.7885477582846003,
+      "log_loss": 0.8967394752230158,
+      "probe_sha256": "f7bc571115854f45fe9e228762012f1ce2dd99119d5450b0767b83cd2e15234b"
+    },
+    {
+      "model": "ViT-B/16",
+      "model_key": "vit",
+      "condition": "96px",
+      "n_images": 48,
+      "accuracy": 0.6458333333333334,
+      "macro_f1": 0.6321991347146146,
+      "log_loss": 1.2916465077715114,
+      "probe_sha256": "f7bc571115854f45fe9e228762012f1ce2dd99119d5450b0767b83cd2e15234b"
+    },
+    {
+      "model": "ViT-B/16",
+      "model_key": "vit",
+      "condition": "160px",
+      "n_images": 48,
+      "accuracy": 0.6666666666666666,
+      "macro_f1": 0.6604311652686267,
+      "log_loss": 1.2151967778498187,
+      "probe_sha256": "f7bc571115854f45fe9e228762012f1ce2dd99119d5450b0767b83cd2e15234b"
+    },
+    {
+      "model": "SwinV2-Tiny",
+      "model_key": "swinv2",
+      "condition": "original",
+      "n_images": 48,
+      "accuracy": 0.6666666666666666,
+      "macro_f1": 0.6435947265668629,
+      "log_loss": 1.0550520073142056,
+      "probe_sha256": "f49400d741c5577478916e3943968dac975cb6db24998a0d512b7576b12d239d"
+    },
+    {
+      "model": "SwinV2-Tiny",
+      "model_key": "swinv2",
+      "condition": "96px",
+      "n_images": 48,
+      "accuracy": 0.4166666666666667,
+      "macro_f1": 0.4181845931845933,
+      "log_loss": 1.643399677646423,
+      "probe_sha256": "f49400d741c5577478916e3943968dac975cb6db24998a0d512b7576b12d239d"
+    },
+    {
+      "model": "SwinV2-Tiny",
+      "model_key": "swinv2",
+      "condition": "160px",
+      "n_images": 48,
+      "accuracy": 0.5208333333333334,
+      "macro_f1": 0.5131560203928626,
+      "log_loss": 1.4001637844594317,
+      "probe_sha256": "f49400d741c5577478916e3943968dac975cb6db24998a0d512b7576b12d239d"
+    },
+    {
+      "model": "EVA-02 Base 448",
+      "model_key": "eva02",
+      "condition": "original",
+      "n_images": 48,
+      "accuracy": 0.8958333333333334,
+      "macro_f1": 0.8957080200501254,
+      "log_loss": 0.3669891522226793,
+      "probe_sha256": "258108c03ad45ad860f4618920dc96e3e6eb151b457ac61dff3861868148b833"
+    },
+    {
+      "model": "EVA-02 Base 448",
+      "model_key": "eva02",
+      "condition": "96px",
+      "n_images": 48,
+      "accuracy": 0.6666666666666666,
+      "macro_f1": 0.6560897435897436,
+      "log_loss": 1.066855905366973,
+      "probe_sha256": "258108c03ad45ad860f4618920dc96e3e6eb151b457ac61dff3861868148b833"
+    },
+    {
+      "model": "EVA-02 Base 448",
+      "model_key": "eva02",
+      "condition": "160px",
+      "n_images": 48,
+      "accuracy": 0.6875,
+      "macro_f1": 0.6811767667030825,
+      "log_loss": 0.8602473967156262,
+      "probe_sha256": "258108c03ad45ad860f4618920dc96e3e6eb151b457ac61dff3861868148b833"
+    }
+  ],
+  "outputs": {
+    "1b442017": "{'split_sizes': {'train': 108, 'validation': 24, 'test': 48}, 'dataset_digest': '842433b772bbc8649d059c2def5415c150c396fa953464e47331a5a6bfa3b96a', 'observer_overlap': {'observers': 117, 'observers_in_more_than_one_split': 31}}\n",
+    "7aaa53fc": "Model                         Feat   5NN Acc  Probe Acc  Macro F1    Top-3  LogLoss\n------------------------------------------------------------------------------------------\nResNet-50                     2048     0.500      0.500     0.467    0.854    1.754\nMobileNetV4-Conv-Small        1280     0.417      0.500     0.505    0.812    1.448\nConvNeXt-Tiny                  768     0.729      0.729     0.727    0.917    1.133\nViT-B/16                       768     0.792      0.792     0.789    0.958    0.897\nSwinV2-Tiny                    768     0.583      0.667     0.644    0.875    1.055\nEVA-02 Base 448                768     0.833      0.896     0.896    0.979    0.367\n",
+    "a60da6ff": "Test photos by how many of the six probes got them right: {'split': 8, 'unanimous_correct': 14, 'majority_correct': 19, 'shared_hard_case': 7}\n\nRecall by species          ResNet-50 MobileNetV4 ConvNeXt-Ti    ViT-B/16 SwinV2-Tiny EVA-02 Base\nSong Sparrow                    0.25        0.25        0.38        0.50        0.50        0.75\nChipping Sparrow                0.50        0.38        0.62        0.88        0.25        1.00\nWhite-throated Sparrow          0.25        0.25        0.88        0.88        0.88        1.00\nDark-eyed Junco                 0.25        0.75        0.62        0.75        0.38        0.75\nHouse Finch                     0.75        0.50        0.88        0.88        1.00        0.88\nAmerican Goldfinch              1.00        0.88        1.00        0.88        1.00        1.00\n",
+    "f3c4811d": "ResNet-50 [(6, 0.5), (12, 0.583), (18, 0.5)]\nMobileNetV4-Conv-Small [(6, 0.458), (12, 0.521), (18, 0.5)]\nConvNeXt-Tiny [(6, 0.771), (12, 0.771), (18, 0.729)]\nViT-B/16 [(6, 0.771), (12, 0.812), (18, 0.792)]\nSwinV2-Tiny [(6, 0.542), (12, 0.688), (18, 0.667)]\nEVA-02 Base 448 [(6, 0.896), (12, 0.917), (18, 0.896)]\n",
+    "23084f05": "Model                        Condition  Accuracy  Macro F1  Log-loss\nResNet-50                     original     0.500     0.467     1.754\nResNet-50                         96px     0.417     0.408     2.955\nResNet-50                        160px     0.417     0.409     2.347\nMobileNetV4-Conv-Small        original     0.500     0.505     1.448\nMobileNetV4-Conv-Small            96px     0.458     0.445     1.776\nMobileNetV4-Conv-Small           160px     0.438     0.432     1.556\nConvNeXt-Tiny                 original     0.729     0.727     1.133\nConvNeXt-Tiny                     96px     0.604     0.617     1.664\nConvNeXt-Tiny                    160px     0.646     0.662     1.614\nViT-B/16                      original     0.792     0.789     0.897\nViT-B/16                          96px     0.646     0.632     1.292\nViT-B/16                         160px     0.667     0.660     1.215\nSwinV2-Tiny                   original     0.667     0.644     1.055\nSwinV2-Tiny                       96px     0.417     0.418     1.643\nSwinV2-Tiny                      160px     0.521     0.513     1.400\nEVA-02 Base 448               original     0.896     0.896     0.367\nEVA-02 Base 448                   96px     0.667     0.656     1.067\nEVA-02 Base 448                  160px     0.688     0.681     0.860\n",
+    "3c8af07b": "DIMER Modern Image Classification Workshop\n---------------------------------------------------\nDataset:\n  train: 108\n  validation: 24\n  test: 48\n  classes: 6\n\nModel                        5NN Acc  Probe Acc  Macro F1   Feat\n------------------------------------------------------------------\nResNet-50                      0.500      0.500     0.467   2048\nMobileNetV4-Conv-Small         0.417      0.500     0.505   1280\nConvNeXt-Tiny                  0.729      0.729     0.727    768\nViT-B/16                       0.792      0.792     0.789    768\nSwinV2-Tiny                    0.583      0.667     0.644    768\nEVA-02 Base 448                0.833      0.896     0.896    768\n\nOutputs: outputs/modern_image_classification/\n",
+    "activity-validation": "Model                       Per class  Images  Epoch  Val loss  Val acc  \u0394 loss vs full\nResNet-50                           6      36      8     1.369    0.500          +0.469\nMobileNetV4-Conv-Small              6      36     19     1.114    0.667          +0.307\nConvNeXt-Tiny                       6      36   1000     0.185    0.917          +0.079\nViT-B/16                            6      36     24     0.312    0.917          +0.176\nSwinV2-Tiny                         6      36     14     0.748    0.708          +0.114\nEVA-02 Base 448                     6      36   1000     0.039    1.000          +0.035\nResNet-50                          12      72     16     1.318    0.667          +0.418\nMobileNetV4-Conv-Small             12      72     28     1.001    0.542          +0.194\nConvNeXt-Tiny                      12      72     90     0.204    0.917          +0.098\nViT-B/16                           12      72     23     0.283    0.875          +0.148\nSwinV2-Tiny                        12      72     36     0.638    0.708          +0.004\nEVA-02 Base 448                    12      72   1000     0.007    1.000          +0.003\nResNet-50                          18     108     35     0.900    0.792          +0.000\nMobileNetV4-Conv-Small             18     108     46     0.807    0.708          +0.000\nConvNeXt-Tiny                      18     108   1000     0.105    0.958          +0.000\nViT-B/16                           18     108   1000     0.136    0.917          +0.000\nSwinV2-Tiny                        18     108     34     0.634    0.750          +0.000\nEVA-02 Base 448                    18     108   1000     0.003    1.000          +0.000\nSaved to outputs/modern_image_classification/activity \u2014 validation only; no test data was read.\n"
+  }
+}

@@ -738,6 +738,8 @@ Protocol:
    - higher summed cosine similarity;
    - then lower class ID.
 
+Metrics MUST be computed from this decision. The vote fractions are reported as the 5-NN scores (for top-3 and log-loss), but taking their argmax would ignore the tie-break, so the decided class IDs are passed to the evaluator explicitly. The built-in and BYOD paths MUST use the same implementation. Before any metric is computed, the evaluator MUST reject score arrays of the wrong shape, non-finite or negative values, rows that do not sum to 1, and class IDs out of range.
+
 Report:
 
 ```text
@@ -1075,6 +1077,8 @@ Then reveal the measured results.
 
 No expected answers are encoded.
 
+The interactive "change one thing" activity MUST be validation-only: it fits probes on the nested training subsets and reports validation log-loss, validation accuracy, the selected epoch, the training count and the change from the full set. It MUST NOT read the test split, write its plan before its results, and keep its outputs in a separate `activity/` namespace. The Section 36 data-efficiency table is a predeclared test learning curve and MUST be labelled as such, not as a tool for choosing settings.
+
 ---
 
 # 39. Resource measurement
@@ -1283,6 +1287,8 @@ max_abs_probability_diff <= 1e-6
 
 All predicted class IDs must match exactly.
 
+Since revision 0.2.0 the reload MUST reconstruct the probe from the artifact directory alone: read `manifest.json` from disk, check its format, base identity and the probe file's recorded size and SHA-256 before loading the tensors, and check that `class_order` lists distinct classes that match the weight shape and the classes the probe was trained on. The decoded species labels, not only the class IDs, MUST match. A missing manifest, a changed probe file, a false digest, a wrong dimension or a reordered `class_order` MUST be rejected.
+
 ---
 
 # 48. Base-model binding
@@ -1333,6 +1339,8 @@ Suggested intermediate sizes:
 This measures image-detail sensitivity without changing model architecture.
 
 It is exploratory and must not influence probe selection.
+
+Implementation (revision 0.2.0): each test photo is reduced so its longer side is 96 or 160 px (aspect ratio kept), and the model's native transform enlarges it again. The probe is rebuilt from its saved artifact and reused unchanged; each result row records the probe file's SHA-256, together with the unchanged-source (`original`) condition. When the flag is off, the notebook MUST say the experiment was skipped and produce no rows; a flag that produces no experiment is not acceptable.
 
 ---
 
@@ -1569,7 +1577,7 @@ filename,label,split
 
 # 62. BYOD requirements
 
-Recommended ceilings:
+Enforced requirements (checked from `labels.csv` before any image is decoded):
 
 ```text
 2..20 classes
@@ -1590,6 +1598,8 @@ BMP
 ```
 
 Every sample must belong to exactly one class.
+
+A ZIP MUST be validated in full before it is written: no absolute paths, `..`, drive letters or symbolic links; at most 1 GB expanded; and no two members that land on the same file (compared case-insensitively). It is unpacked into a new folder owned by the notebook, keeping its folder structure, so a `filename` means the same thing in a directory and in a ZIP. A failed attempt's folder is removed, and a later upload can never reuse files from an earlier one. Every `filename` in `labels.csv` MUST be a relative path that resolves inside the dataset folder without passing through a symbolic link. A user-supplied directory is read in place and never modified or deleted.
 
 No multi-label task.
 
@@ -1665,6 +1675,8 @@ Do not upload:
 to hosted runtimes unless permitted.
 
 Model-weight acquisition does not require transmitting user images to model hosts.
+
+This warning, the enforced requirements and a description of what the BYOD outputs contain MUST appear at the point of use, before the BYOD cell. A hosted runtime such as Colab MUST NOT be described as on-premises processing. The BYOD branch MUST write per-image predictions with every class score, per-class metrics, provenance and the probe artifacts, and check that inventory at the end.
 
 ---
 
