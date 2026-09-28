@@ -193,3 +193,34 @@ Code cells changed, so the 2026-09-26 Colab record does not describe this revisi
 - a hosted BYOD run with a representative dataset.
 
 The review's learner-observation recommendation remains open.
+
+### Maintainer-supplied Colab execution of revision 0.2.0 — 2026-09-28
+
+The maintainer supplied an executed Colab copy of revision `0.2.0-candidate`. It is preserved byte-for-byte as [evidence](execution-evidence/2026-09-28/DIMER_Modern_Image_Classification_Workshop.ipynb).
+
+- **Reviewed source:** commit `cf5933b` (merged to `main` as `cfa94fa`), notebook blob `fd59129eea28`. All 50 cell ids, types and sources match the committed notebook exactly; no Colab `# @title` lines were added.
+- **Executed-file SHA-256:** `93e9f52bf03deda8f5b8ba1941041cab8522f7edb3375fe069b752df1dd87275`.
+- **Runtime:** Google Colab, Tesla T4 (`cuda:0`); Python 3.13.15, torch 2.14.0+cu130, torchvision 0.29.0, timm 1.0.29, safetensors 0.8.0, NumPy 2.1.3 (preloaded by the host kernel), Pillow 11.3.0.
+- **Execution:** 21/21 code cells ran with execution counts 1–21 in order and no saved error outputs. The completion summary is present. The notebook's in-cell reload check raises on any difference, so the lack of errors means every probe artifact reloaded with matching probabilities and labels.
+- **Configuration:** default `Run all` path. Resolution stress, the validation-only activity and BYOD were left off, and each cell says it was skipped.
+- **Results:** split 108 / 24 / 48, split digest `842433b7…`, 31 of 117 observers in more than one split, majority floor 0.167.
+
+  | Model | 5-NN acc | Probe acc | Macro-F1 | Log-loss | Selected epoch |
+  |---|---|---|---|---|---|
+  | ResNet-50 | 0.500 | 0.500 | 0.467 | 1.754 | 35 |
+  | MobileNetV4-Conv-Small | 0.417 | 0.500 | 0.505 | 1.448 | 46 |
+  | ConvNeXt-Tiny | 0.729 | 0.729 | 0.727 | 1.133 | 1000 |
+  | ViT-B/16 | 0.792 | 0.792 | 0.789 | 0.897 | 1000 |
+  | SwinV2-Tiny | 0.583 | 0.667 | 0.644 | 1.055 | 34 |
+  | EVA-02 Base 448 | 0.833 | 0.896 | 0.896 | 0.367 | 1000 |
+
+  These equal the real-model CPU pre-flight above to the printed precision, including the corrected tie-aware 5-NN values. The consensus counts also match: 14 unanimous-correct, 19 majority-correct, 8 split and 7 shared hard cases. The training gallery, confusion matrices, disagreement gallery and PCA plots rendered.
+- **Evidence boundary:** saved outputs were inspected; the execution was not independently repeated. The separately exported files were not supplied.
+
+This closes the "fresh Colab T4 default `Run all`" item above. The following remain open:
+
+- the resolution-stress and validation-activity paths on a hosted runtime (covered by the CPU pre-flight only);
+- a hosted BYOD run with a representative dataset (covered by the CPU pre-flight only);
+- the learner-observation recommendation.
+
+**Status: Candidate.**
