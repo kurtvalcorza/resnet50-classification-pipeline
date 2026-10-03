@@ -224,3 +224,9 @@ This closes the "fresh Colab T4 default `Run all`" item above. The following rem
 - the learner-observation recommendation.
 
 **Status: Candidate.**
+
+### 2026-10-03 uv isolated environment — revision 0.3.0-candidate
+
+Revision `0.3.0-candidate` moves the workshop off the in-kernel install: notebook blob `fd59129eea28` → `b8c151140103`. Two kernel setup cells now build a uv-managed CPython 3.12.12 environment from a carried hash lock (`tools/modern-image-workshop-requirements.lock`, 53 manylinux x86_64 wheels, installed with `--require-hashes --only-binary :all:`) and route every later cell to one persistent worker on that interpreter, so there is no install into the kernel and no restart step. The direct pins are unchanged; NumPy is now always the pinned 2.5.3 (the 2026-09-28 Colab run kept the kernel's preloaded 2.1.3). The notebook runs on **Linux x86_64 only**. Teaching cells, data, seeds, models and metrics are unchanged, and the two long JSON literals are split into pieces of at most 1,000 characters. `tools/build_modern_workshop_runtime.py --check` keeps the setup cell in step with the lock.
+
+A local Linux x86_64 CPU run (WSL, GPU hidden) of this revision executed all 23 code cells through the real setup cells (uv wheel, managed Python, the full lock) and the worker with the real corpus and checkpoints, default configuration. Its 5-NN accuracy, probe accuracy, macro-F1, log-loss, selected epochs (35, 46, 1000, 1000, 34, 1000), split digest `842433b7…`, observer overlap (31 of 117) and consensus counts (14 / 19 / 8 / 7) equal the 2026-09-28 Colab T4 run of revision 0.2.0 to the printed precision. This is a builder pre-flight, not clean-runtime evidence. The 2026-09-28 Colab record above describes revision 0.2.0, not this one. **A hosted Colab T4 re-run of revision 0.3.0 is pending. Status: Candidate.**
