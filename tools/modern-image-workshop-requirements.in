@@ -1,0 +1,16 @@
+# Direct pins of tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb, unchanged from the in-kernel
+# install of revision 0.2.0-candidate (blob fd59129e). Compiled into
+# tools/modern-image-workshop-requirements.lock for CPython 3.12 on x86_64-manylinux_2_28 with:
+#   uv pip compile tools/modern-image-workshop-requirements.in --python-version 3.12 \
+#     --python-platform x86_64-manylinux_2_28 --generate-hashes --only-binary :all: \
+#     --index-url https://pypi.org/simple -o tools/modern-image-workshop-requirements.lock
+# The notebook carries the lock and installs it with --require-hashes --only-binary :all:.
+torch==2.14.0
+torchvision==0.29.0
+torchaudio==2.11.0
+timm==1.0.29
+safetensors==0.8.0
+numpy==2.5.3
+pillow==11.3.0
+huggingface-hub==0.36.2
+matplotlib==3.10.6
