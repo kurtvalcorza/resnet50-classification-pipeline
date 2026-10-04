@@ -96,6 +96,7 @@ they are measurements for the stated runtime, not general estimates.
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
 | 2026-09-14 | `b7e787d` / `77dc7ebd3d7b` | Kaggle T4 (`kurtvalcorza/dimer-nb2-resnet50-classification` v1) | Default sample path | 182.3 s | **PASSED** — 10/10 ok code cells executed cleanly, 8 files, 103 MB staged |
+| 2026-10-04 | `26eb545` / `b8c151140103` | Google Colab (browser, maintainer-run), Tesla T4 | `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb` revision 0.3.0-candidate, default `Run all` (toggles at defaults) | not recorded (setup 65 s) | **PASSED** — 23/23 code cells, counts 1–23, 0 errors; metrics equal the 2026-09-28 run ([record](#maintainer-supplied-colab-execution-of-revision-030--2026-10-04)) |
 
 ## Current status
 
@@ -230,3 +231,35 @@ This closes the "fresh Colab T4 default `Run all`" item above. The following rem
 Revision `0.3.0-candidate` moves the workshop off the in-kernel install: notebook blob `fd59129eea28` → `b8c151140103`. Two kernel setup cells now build a uv-managed CPython 3.12.12 environment from a carried hash lock (`tools/modern-image-workshop-requirements.lock`, 53 manylinux x86_64 wheels, installed with `--require-hashes --only-binary :all:`) and route every later cell to one persistent worker on that interpreter, so there is no install into the kernel and no restart step. The direct pins are unchanged; NumPy is now always the pinned 2.5.3 (the 2026-09-28 Colab run kept the kernel's preloaded 2.1.3). The notebook runs on **Linux x86_64 only**. Teaching cells, data, seeds, models and metrics are unchanged, and the two long JSON literals are split into pieces of at most 1,000 characters. `tools/build_modern_workshop_runtime.py --check` keeps the setup cell in step with the lock.
 
 A local Linux x86_64 CPU run (WSL, GPU hidden) of this revision executed all 23 code cells through the real setup cells (uv wheel, managed Python, the full lock) and the worker with the real corpus and checkpoints, default configuration. Its 5-NN accuracy, probe accuracy, macro-F1, log-loss, selected epochs (35, 46, 1000, 1000, 34, 1000), split digest `842433b7…`, observer overlap (31 of 117) and consensus counts (14 / 19 / 8 / 7) equal the 2026-09-28 Colab T4 run of revision 0.2.0 to the printed precision. This is a builder pre-flight, not clean-runtime evidence. The 2026-09-28 Colab record above describes revision 0.2.0, not this one. **A hosted Colab T4 re-run of revision 0.3.0 is pending. Status: Candidate.**
+
+### Maintainer-supplied Colab execution of revision 0.3.0 — 2026-10-04
+
+The maintainer ran revision `0.3.0-candidate` in a browser Colab session and supplied the executed copy. It is preserved byte-for-byte as [evidence](execution-evidence/2026-10-04/DIMER_Modern_Image_Classification_Workshop_26eb545_colab-browser-t4.ipynb).
+
+- **Executed-file SHA-256:** `feadbdc5ef92040a9e4ec2fb16c87a20648fb62fcb71b68a5f5a3a1dab14d26a` (the committed copy has the same digest).
+- **Source:** PR head `26eb545`, notebook blob `b8c151140103`. All 54 cell ids, types and sources match the committed notebook exactly. No `# @param` value was changed and Colab added no `# @title` lines.
+- **Executor:** Google Colab (browser, maintainer-run), Tesla T4 (`cuda:0`, 15,637,086,208 bytes).
+- **Runtime:** kernel Python 3.13.15. The uv setup cell built `/content/dimer_isolated_env` (CPython 3.12.12, 53 locked packages) in 65 s, with no restart. Every later cell ran in the worker on that interpreter: torch 2.14.0+cu130, torchvision 0.29.0, timm 1.0.29, safetensors 0.8.0, NumPy 2.5.3, Pillow 11.3.0, Matplotlib 3.10.6.
+- **Execution:** 23/23 code cells ran with execution counts 1–23 in order, with no saved error outputs. The completion summary is present and 9 figures rendered. Total wall time is not recorded: the downloaded file has no per-cell timing.
+- **Configuration:** default `Run all` path. Resolution stress, the validation-only activity and BYOD stayed off, and each cell says it was skipped.
+- **Results:** split 108 / 24 / 48, split digest `842433b7…`, 31 of 117 observers in more than one split, majority floor 0.167. Consensus counts are 14 unanimous-correct, 19 majority-correct, 8 split and 7 shared hard cases.
+
+  | Model | 5-NN acc | Probe acc | Macro-F1 | Log-loss | Selected epoch |
+  |---|---|---|---|---|---|
+  | ResNet-50 | 0.500 | 0.500 | 0.467 | 1.754 | 35 |
+  | MobileNetV4-Conv-Small | 0.417 | 0.500 | 0.505 | 1.448 | 46 |
+  | ConvNeXt-Tiny | 0.729 | 0.729 | 0.727 | 1.133 | 1000 |
+  | ViT-B/16 | 0.792 | 0.792 | 0.789 | 0.897 | 1000 |
+  | SwinV2-Tiny | 0.583 | 0.667 | 0.644 | 1.055 | 34 |
+  | EVA-02 Base 448 | 0.833 | 0.896 | 0.896 | 0.367 | 1000 |
+
+- **Comparison with the 2026-09-28 Colab T4 run of revision 0.2.0:** a line diff of the normalised text outputs leaves only expected differences. These are the setup output (uv environment against the old in-kernel install, with NumPy 2.5.3 against the preloaded 2.1.3), the revision string, Hugging Face download progress bars and the HF_TOKEN warning, which are absent now, and backbone latencies. Every accuracy, macro-F1, top-3, log-loss and per-class recall, every selected epoch (35 / 46 / 1000 / 1000 / 34 / 1000), and the representation-geometry, data-efficiency and consensus outputs are identical to the printed precision.
+- **Evidence boundary:** this covers the default path only. Saved outputs were inspected and the execution was not independently repeated. The separately exported files were not supplied.
+
+This closes the pending hosted Colab T4 re-run of revision 0.3.0. The following remain open:
+
+- the resolution-stress and validation-activity paths on a hosted runtime;
+- a hosted BYOD run with a representative dataset;
+- the learner-observation recommendation.
+
+**Status: Candidate.**
