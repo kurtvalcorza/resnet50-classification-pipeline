@@ -13,8 +13,23 @@ TEMPLATE = {
     "notebook_name": "resnet50_classification_colab.ipynb",
     "profile": "E2E",
     "mode": "GUIDED",
+    # SWP-R (2026-10-05 fleet sweep): nothing is pip-installed into the notebook kernel. The fleet's uv isolated-environment
+    # mechanism (build_notebook.py/2.2): managed CPython, a size- and SHA-256-verified uv wheel, and a lock compiled from the
+    # pyproject pins with `uv pip compile pyproject.toml --python-version 3.12 --python-platform x86_64-manylinux_2_28
+    # --generate-hashes --only-binary :all: -o tutorials/requirements-colab.lock.txt` (uv 0.12.15).
+    "isolated_runtime": True,
+    "infrastructure_labels": True,
+    "managed_python": "3.12.12",
+    "uv": {
+        "version": "0.12.15",
+        "url": "https://files.pythonhosted.org/packages/1e/fd/432451d732917c49152a291de3ef171aa6b0f1a22d39780fb2c1f085ca4c/uv-0.12.15-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "bytes": 20081404,
+        "sha256": "aee9802f46bae436bd91751bb33ddeb379ef1596b5c19df193219d545d244b60",
+    },
+    "lock": "tutorials/requirements-colab.lock.txt",
     "run_all": (
-        "Selecting **Run all** in a fresh supported runtime installs the pinned dependencies, stages and digest-verifies the pinned "
+        "Selecting **Run all** in a fresh supported runtime builds an isolated environment from the hash-locked pins (nothing is "
+        "installed into the notebook's own Python, so no restart is needed and Run all completes in one pass), stages and digest-verifies the pinned "
         "snapshot, generates the deterministic synthetic sample image, validates it into an input manifest, classifies it with the "
         "pretrained head, writes the zero-shot evaluation report, downloads and digest-verifies the `Cleanlab/cifar-10-subset` tutorial "
         "dataset (a balanced per-class subset with a seeded 80/20 split), performs a bounded in-kernel fine-tuning run of a new "
@@ -24,14 +39,36 @@ TEMPLATE = {
         "edit is required (NOTEBOOK_SPEC 2.0 §5)."
     ),
     "byod": (
-        "Two optional branches, both off by default and never part of the default path: `USE_BYOD = True` in Section 4 uploads one "
-        "image that passes through the same validation, classification, evaluation-report and export cells as the synthetic sample; "
-        "`USE_BYOD_DATASET = True` in Section 8 uploads a `.zip` of class folders (or `train/` and `val/` directories) that enters the "
+        "Two optional branches, both off by default and never part of the default path: `USE_BYOD = True` in Section 4 reads one "
+        "image (from `BYOD_IMAGE_PATH`, or through the Colab upload dialog when the path is empty) that passes through the same validation, classification, evaluation-report and export cells as the synthetic sample; "
+        "`USE_BYOD_DATASET = True` in Section 8 reads a `.zip` of class folders (from `BYOD_DATASET_PATH`, or the upload dialog) (or `train/` and `val/` directories) that enters the "
         "same validation, seeded split, in-kernel fine-tuning, export, fresh-reload and held-out evaluation cells as the tutorial "
         "dataset. Expected formats, limits and privacy guidance are stated in the Prerequisites and in those cells; uploads stay "
         "inside this runtime."
     ),
     "pipeline_class": "ResNet50ClassificationPipeline",
+    "guided": {
+        "opening": [
+            '**Who this notebook is for.** The intended audience is a learner who knows basic Python and PIL, has used Colab or Jupyter, and wants to see what an '
+            "ImageNet classifier's output does and does not mean, how a prediction is validated and reported honestly, and how the same backbone is adapted to new "
+            'classes with a new head. No prior experience with timm or fine-tuning is assumed; terms are explained where they first matter and again in the '
+            '**Glossary** at the end. CPU is adequate; a GPU runtime is faster.\n\n**Input → Model → Output.**\n\n| | Classification | Head fine-tuning |\n|---|---|---|\n| '
+            'Input | one RGB image (any size up to 4096 px; resized and center-cropped to 224 × 224) | labelled images in class folders: the pinned 2-class '
+            'CIFAR-10 subset (`frog`, `truck`), or your `.zip` |\n| Model | timm ResNet-50 `a1_in1k`, 1000-class head | the same backbone with a new linear head '
+            'sized to your classes, trained with AdamW and cross-entropy |\n| Output | argmax label and a top-5 list of uncalibrated softmax scores; an evaluation '
+            'report (`not-measurable` without a label) | `model.safetensors` + `model-config.json`, reloaded from disk and scored on the held-out split beside the '
+            'majority-class baseline |\n\n**How to use this notebook.** Choose a runtime (CPU works; **Runtime → Change runtime type → T4 GPU** is faster), then '
+            "**Runtime → Run all**. Run all completes in one pass: Section 1 installs nothing into the notebook's own Python, so no restart is needed. Sections 1–3 "
+            'are **infrastructure** — the isolated environment, the carried package and the model snapshot — and their cells are collapsed; you may run them '
+            'without studying them. The learning path starts in Section 4. Form fields (`# @param`) are the only values meant to be edited. Before each principal '
+            'result the notebook asks you to **Predict**; after it come **What to notice** and a collapsible **Check your reasoning**. The recorded Kaggle run in '
+            '`docs/release-verification.md` records a pass but no per-stage numbers, so the worked answers describe what to look for rather than quoting values. '
+            '**Troubleshooting**, a **Glossary** and a **Conclusion** template are at the end. Writing your predictions down is optional.\n\n**Roadmap:** 1–3 '
+            'infrastructure → 4 the synthetic sample or your image → 5 input validation *(core concept: the input contract)* → 6 classification *(core concept: '
+            'scores are not probabilities)* → 7 the evaluation report *(evaluation practice)* → 8 dataset and head fine-tuning → 9 fresh reload and held-out '
+            'evaluation *(evaluation practice)* → 10 outputs and provenance *(engineering)* → interpretation, troubleshooting, glossary and your conclusion.'
+        ],
+    },
     "weights_key": "resnet50-a1",
     "runtime_imports": ["torch", "timm"],
     "title": "ResNet-50 a1_in1k — DIMER image classification tutorial (standalone)",
@@ -83,7 +120,7 @@ TEMPLATE = {
         "space still receives a label unless adapted via in-kernel fine-tuning."
     ),
     "prerequisites": [
-        "- **Runtime:** a fresh supported runtime (Google Colab or Jupyter, Python 3.12). The default path runs on CPU and uses CUDA automatically when available; inference is float32 on both. The pinned `torch==2.14.0` install is the largest download of the run.",
+        "- **Runtime:** a fresh supported runtime (Google Colab or Jupyter, Python 3.12). The default path runs on CPU and uses CUDA automatically when available; inference is float32 on both. Building the isolated environment (the pinned `torch==2.14.0` is its largest package; reused on a re-run) is the slowest setup step.",
         "- **Knowledge:** basic Python and PIL image handling; what a softmax over class logits is.",
         "- **Data:** the default sample is a deterministic 256×256 RGB gradient generated in code, so nothing is downloaded and no private data is needed. Optional BYOD upload is gated off by default so the sample path can run top-to-bottom without interaction. Expected BYOD input: one image file decodable by Pillow (PNG/JPEG/WebP and similar), any colour mode, longest side at most 4096 px. Do not upload confidential or restricted data to a hosted notebook environment unless you are authorized to do so. Uploaded inputs remain in the notebook runtime; this pipeline does not send them to a third-party inference API.",
     ],
@@ -98,7 +135,8 @@ TEMPLATE = {
                 "correctness measurement. BYOD is optional and disabled by default; when enabled, upload one image file and, "
                 "if you know its ImageNet-1k class index (0–999), set `GROUND_TRUTH_INDEX` so the evaluation step can compute "
                 "`top_k_accuracy`. Leave it at `-1` when the label is unknown. Look for a dictionary naming the sample kind, "
-                "its size and digest, and whether a ground-truth index was supplied."
+                "its size and digest, and whether a ground-truth index was supplied.\n\n"
+                "**Predict before running:** the default image is a colour gradient. Which of the 1000 ImageNet classes is it?"
             ),
             "code": (
                 "import hashlib\n"
@@ -107,13 +145,30 @@ TEMPLATE = {
                 "from PIL import Image\n\n"
                 "USE_BYOD = False  # @param {{type:\"boolean\"}}\n"
                 "GROUND_TRUTH_INDEX = -1  # @param {{type:\"integer\"}}\n"
+                "# An image file already in the runtime (works on Colab, Kaggle and Jupyter); empty = the Colab upload dialog.\n"
+                "BYOD_IMAGE_PATH = ''  # @param {{type:\"string\"}}\n"
                 "SAMPLE_SIDE = 256\n\n"
                 "if USE_BYOD:\n"
-                "    from google.colab import files\n"
-                "    uploaded = files.upload()\n"
-                "    image_name = next(iter(uploaded))\n"
-                "    image = Image.open(io.BytesIO(uploaded[image_name]))\n"
-                "    image.load()\n"
+                "    from pathlib import Path\n"
+                "    if BYOD_IMAGE_PATH.strip():\n"
+                "        image_path = Path(BYOD_IMAGE_PATH.strip()).expanduser()\n"
+                "        if not image_path.is_file():\n"
+                "            raise FileNotFoundError(f'BYOD_IMAGE_PATH {{BYOD_IMAGE_PATH!r}} is not a file (relative paths start at {{Path.cwd()}}): give one image file Pillow can open.')\n"
+                "        image_name, image_bytes = image_path.name, image_path.read_bytes()\n"
+                "    else:\n"
+                "        try:\n"
+                "            from google.colab import files\n"
+                "        except ImportError:\n"
+                "            raise RuntimeError('USE_BYOD is True but BYOD_IMAGE_PATH is empty, and the upload dialog exists only in Google Colab: on Kaggle or Jupyter put the image in the runtime and set BYOD_IMAGE_PATH to its path.') from None\n"
+                "        uploaded = files.upload() or {{}}\n"
+                "        if len(uploaded) != 1:\n"
+                "            raise ValueError(f'Upload exactly one image file (received {{len(uploaded)}}; a cancelled dialog sends none): run this cell again.')\n"
+                "        image_name, image_bytes = next(iter(uploaded.items()))\n"
+                "    try:\n"
+                "        image = Image.open(io.BytesIO(image_bytes))\n"
+                "        image.load()\n"
+                "    except Exception as exc:\n"
+                "        raise ValueError(f'{{image_name}}: Pillow cannot decode this file as an image ({{exc}}).') from None\n"
                 "    sample_kind = 'BYOD'\n"
                 "else:\n"
                 "    # Deterministic synthetic gradient: no randomness, so no seed is needed and the digest is stable.\n"
@@ -134,6 +189,13 @@ TEMPLATE = {
         },
         {
             "md": (
+                '**What to notice:** `sample_kind`, the image size and RGB digest, and `ground_truth_index` (None for the gradient).\n\n<details><summary>Check your '
+                'reasoning</summary>None of them: a gradient is not a photograph of any class, so there is no right answer and no ground truth. Whatever label Section '
+                '6 returns is plumbing evidence that the input contract and forward pass work, not a correctness measurement.</details>'
+            ),
+        },
+        {
+            "md": (
                 "## 5. Validate the input → input manifest\n\n"
                 "`validate_inputs` is the pipeline's public validation stage: it applies exactly the checks `predict` "
                 "applies — type, batch size 1..`MAX_BATCH`, image side 1..`MAX_IMAGE_SIDE` px, `top_k` 1..`NUM_CLASSES` — "
@@ -142,7 +204,8 @@ TEMPLATE = {
                 "looks like, the cell also validates a deliberately oversized image and records the pipeline's own error "
                 "message as a finding. Inside the pipeline every accepted image is converted to RGB, resized to 235 px and "
                 "center-cropped to 224×224 (`crop_pct = 0.95`, bicubic), so content near the border is cropped away; "
-                "nothing else is dropped or altered."
+                "nothing else is dropped or altered.\n\n"
+                "**Predict before running:** an image 4097 px wide — will `validate_inputs` resize it, or refuse it?"
             ),
             "code": (
                 "import json\n"
@@ -162,6 +225,13 @@ TEMPLATE = {
         },
         {
             "md": (
+                "**What to notice:** the ceilings, the accepted input's mode and size, and the `oversized-probe` finding with the pipeline's own message.\n\n<details><summary>Check "
+                'your reasoning</summary>Refuse it: the side ceiling is `MAX_IMAGE_SIDE` (4096 px), and the rejection is recorded as a finding with the rule in the '
+                'message, not swallowed. Accepted images are converted to RGB, resized and center-cropped to 224 × 224, so content near the border is lost.</details>'
+            ),
+        },
+        {
+            "md": (
                 "## 6. Classify\n\n"
                 "`predict` returns, per image, `predicted_index`/`predicted_label` and a `top_k` list of `{{label, index, "
                 "score}}` entries **ordered by descending score** — rank position is the class ordering, and the exported "
@@ -171,7 +241,8 @@ TEMPLATE = {
                 "cut-off on its own labelled data — downstream calibration is the caller's responsibility. Inference is "
                 "deterministic given the same weights, device and library versions (no sampling, `model.eval()`); CPU, GPU "
                 "and cuDNN kernel choices can reorder near-tied classes. Look for the ranked top-5 list; on the gradient "
-                "expect a low top-1 score spread across unrelated classes."
+                "expect a low top-1 score spread across unrelated classes.\n\n"
+                "**Predict before running:** will the model refuse to answer for an image that is no ImageNet class?"
             ),
             "code": (
                 "result = pipe.predict(image, top_k=5)\n"
@@ -179,6 +250,13 @@ TEMPLATE = {
                 "print({{'decision_rule': result['decision_rule'], 'predicted_index': prediction['predicted_index'], 'predicted_label': prediction['predicted_label'], 'device': result['device'], 'source': result['source']}})\n"
                 "for rank, item in enumerate(prediction['top_k'], start=1):\n"
                 "    print(f\"{{rank:>2}}. index {{item['index']:>4}}  score {{item['score']:.4f}}  {{item['label']}}\")"
+            ),
+        },
+        {
+            "md": (
+                '**What to notice:** `decision_rule` (argmax), the top-5 list, and how spread out the scores are.\n\n<details><summary>Check your reasoning</summary>No. '
+                'The model has no *none of these*: it always returns the argmax of a softmax over 1000 classes. On the gradient expect a low top-1 score spread across '
+                'unrelated classes; a score is relative and uncalibrated, not the probability of being right.</details>'
             ),
         },
         {
@@ -191,7 +269,8 @@ TEMPLATE = {
                 "report states what would make the task measurable: labelled photographs with ImageNet-1k class indices, "
                 "for example a held-out sample of your own data scored against its majority-class baseline, or the "
                 "ImageNet-1k validation set (whose upstream 80.38 % top-1 / 94.60 % top-5 at 224 px is quoted from the "
-                "upstream card, not measured here). The report is written to `outputs/{stem}_evaluation_report.json`."
+                "upstream card, not measured here). The report is written to `outputs/{stem}_evaluation_report.json`.\n\n"
+                "*Evaluation practice.* **Predict before running:** with no ground-truth label, what accuracy can the report give?"
             ),
             "code": (
                 "targets = None if ground_truth is None else [ground_truth]\n"
@@ -201,6 +280,13 @@ TEMPLATE = {
                 "print(json.dumps(report, indent=2))\n"
                 "if report['verdict'] == 'not-measurable':\n"
                 "    print('No ground-truth class index was supplied, so top_k_accuracy is not computed; the prediction above is sanity evidence only.')"
+            ),
+        },
+        {
+            "md": (
+                '**What to notice:** the `verdict` (`not-measurable` on the default sample) and the `needs` field naming what would make it measurable.\n\n<details><summary>Check '
+                'your reasoning</summary>None: without a label there is nothing to compare, so the verdict is `not-measurable` rather than a made-up number. With a '
+                'known class index through BYOD the report computes top-1 and top-5 for that one image, labelled `sample-sanity`.</details>'
             ),
         },
         {
@@ -219,7 +305,8 @@ TEMPLATE = {
                 "- **Bring Your Own Data (`USE_BYOD_DATASET = True`):** Upload a `.zip` archive containing either explicit `train/` and `val/` "
                 "directories or un-split class folders (in which case a seeded 80/20 stratified split is performed automatically). "
                 "Enforces >= 2 classes and >= 2 images per class.\n\n"
-                "Deployable fine-tuned artifacts (`model.safetensors` and `model-config.json`) are written atomically to `outputs/{stem}_finetuned`."
+                "Deployable fine-tuned artifacts (`model.safetensors` and `model-config.json`) are written atomically to `outputs/{stem}_finetuned`.\n\n"
+                "**Predict before running:** the new head starts untrained. After one epoch on a few dozen images, will the fine-tuned model beat the majority-class baseline?"
             ),
             "code": (
                 "import hashlib\n"
@@ -228,6 +315,8 @@ TEMPLATE = {
                 "import urllib.request\n"
                 "import zipfile\n\n"
                 "USE_BYOD_DATASET = False  # @param {{type:\"boolean\"}}\n"
+                "# A .zip already in the runtime (works on Colab, Kaggle and Jupyter); empty = the Colab upload dialog.\n"
+                "BYOD_DATASET_PATH = ''  # @param {{type:\"string\"}}\n"
                 "SAMPLE_DATASET_URL = 'https://huggingface.co/datasets/Cleanlab/cifar-10-subset/resolve/bb5a7aabf1d14d2d1e3e49d0d8f917bda3622f75/CIFAR-10-subset.zip'\n"
                 "SAMPLE_DATASET_SHA256 = '66f90a4f87d865e8eb653b62f10e754684075a32314177de76832349d4b1fb19'\n"
                 "SEED = 42\n"
@@ -237,11 +326,21 @@ TEMPLATE = {
                 "val_images, val_targets = [], []\n"
                 "zip_bytes = None\n\n"
                 "if USE_BYOD_DATASET:\n"
-                "    from google.colab import files\n"
-                "    uploaded = files.upload()\n"
-                "    if len(uploaded) != 1:\n"
-                "        raise ValueError('Upload exactly one dataset .zip archive.')\n"
-                "    zip_name, zip_bytes = next(iter(uploaded.items()))\n"
+                "    from pathlib import Path\n"
+                "    if BYOD_DATASET_PATH.strip():\n"
+                "        zip_path = Path(BYOD_DATASET_PATH.strip()).expanduser()\n"
+                "        if not zip_path.is_file():\n"
+                "            raise FileNotFoundError(f'BYOD_DATASET_PATH {{BYOD_DATASET_PATH!r}} is not a file (relative paths start at {{Path.cwd()}}): give one .zip of class folders.')\n"
+                "        zip_name, zip_bytes = zip_path.name, zip_path.read_bytes()\n"
+                "    else:\n"
+                "        try:\n"
+                "            from google.colab import files\n"
+                "        except ImportError:\n"
+                "            raise RuntimeError('USE_BYOD_DATASET is True but BYOD_DATASET_PATH is empty, and the upload dialog exists only in Google Colab: on Kaggle or Jupyter put the .zip in the runtime and set BYOD_DATASET_PATH to its path.') from None\n"
+                "        uploaded = files.upload() or {{}}\n"
+                "        if len(uploaded) != 1:\n"
+                "            raise ValueError(f'Upload exactly one dataset .zip archive (received {{len(uploaded)}}; a cancelled dialog sends none): run this cell again.')\n"
+                "        zip_name, zip_bytes = next(iter(uploaded.items()))\n"
                 "    if not zip_name.lower().endswith('.zip'):\n"
                 "        raise ValueError(f'BYOD archive must be a .zip file, got {{zip_name}}')\n"
                 "    dataset_source = f'user upload: {{zip_name}}'\n"
@@ -359,6 +458,14 @@ TEMPLATE = {
         },
         {
             "md": (
+                '**What to notice:** `dataset_source` (the pinned CIFAR-10 subset, or the synthetic fallback when offline), the class list, and the train / validation counts.\n\n<details><summary>Check '
+                'your reasoning</summary>Usually, but read it rather than assume it: one epoch on 26 training images moves a new head only so far. Section 9 measures '
+                'it against the majority-class baseline on held-out images. If the dataset download failed, the synthetic-stripes fallback is named in '
+                '`dataset_source`.</details>'
+            ),
+        },
+        {
+            "md": (
                 "## 9. Fresh-boundary reload and in-notebook evaluation\n\n"
                 "To verify artifact integrity across an isolation boundary (simulating a fresh deployment or downstream "
                 "container), `ResNet50ClassificationPipeline.from_pretrained` loads the newly generated `model.safetensors` "
@@ -366,7 +473,8 @@ TEMPLATE = {
                 "restores weights with `strict=True`, and configures the custom class labels. "
                 "The reloaded pipeline is then evaluated across all held-out validation images (`val_images`) to compute "
                 "top-1 validation accuracy, compare against the trivial majority-class baseline, and export machine-readable "
-                "evaluation artifacts (`outputs/{stem}_validation_predictions.csv` and `outputs/{stem}_finetuned_evaluation_report.json`)."
+                "evaluation artifacts (`outputs/{stem}_validation_predictions.csv` and `outputs/{stem}_finetuned_evaluation_report.json`).\n\n"
+                "*Evaluation practice.* **Predict before running:** on a balanced two-class split, what accuracy does the majority-class baseline get?"
             ),
             "code": (
                 "import csv\n\n"
@@ -434,6 +542,14 @@ TEMPLATE = {
         },
         {
             "md": (
+                '**What to notice:** top-1 accuracy, the majority baseline, the lift, the per-class breakdown, and `fresh_boundary_source`.\n\n<details><summary>Check '
+                'your reasoning</summary>Half: with two balanced classes, always answering one class is right 50 % of the time. Only the lift over that baseline says '
+                'the head learned something. A handful of validation images gives no dispersion estimate, and the reload from `outputs/` is the evidence that the '
+                'exported files, not the in-memory model, produce these predictions.</details>'
+            ),
+        },
+        {
+            "md": (
                 "## 10. Export outputs and provenance\n\n"
                 "Machine-readable JSON preserves the full prediction (argmax decision and the rank-ordered top-k scores), "
                 "the evaluation report, the fine-tuning training history and in-notebook evaluation metrics, the sample identity and digest, "
@@ -497,6 +613,29 @@ TEMPLATE = {
         "report switch to `sample-sanity` with `top_k_accuracy` at k=1 and k=5; supply your own multi-class dataset folder "
         "to `pipe.fit` to adapt to your domain; classify a batch (up to `MAX_BATCH`) of labelled images from your own "
         "domain and compare top-1 against the majority-class baseline of that set.\n\n"
+        '## Troubleshooting\n\n- **Section 1 stops with "This notebook needs a Linux x86_64 runtime"** — you are on Windows, macOS or an ARM machine. Use Google '
+        'Colab, Kaggle or a Linux x86_64 Jupyter server.\n- **The uv wheel fails its size/SHA-256 check, or a download in Section 1 times out** — run Section 1 '
+        'again; a complete environment built from the same lock is reused, an incomplete one is finished. If it repeats, the network is blocking or altering '
+        '`files.pythonhosted.org` or `pypi.org`.\n- **"The isolated environment\'s Python process exited"** — usually out of memory. Restart the session and '
+        'choose **Run all**.\n- **You re-ran Section 1 on its own** — nothing is lost: it keeps the running worker and every variable, so the cells after it '
+        'keep working. After a session restart, run from the top.\n- **Section 3 reports a size or SHA-256 mismatch, or cannot reach the Hub** — the message '
+        'names the file. Delete it from the snapshot folder Section 3 prints and run Section 3 again.\n- **Section 8 prints "falling back to deterministic '
+        'synthetic dataset"** — the pinned CIFAR-10 subset could not be downloaded or failed its SHA-256; the run continues on synthetic stripes and says so in '
+        '`dataset_source`. Re-run Section 8 when the network is back.\n- **BYOD image: "Pillow cannot decode this file"** — the file is not an image Pillow '
+        'reads (PNG, JPEG, WebP and similar).\n- **BYOD dataset: a class or path refusal** — at least two class folders with at least two images each; no `..` '
+        'or absolute paths in the archive.\n- **BYOD: "… is not a file"** — the path is relative to the working directory printed in the message.\n- **BYOD: "the '
+        'upload dialog exists only in Google Colab"** — on Kaggle or Jupyter, put the file in the runtime and set `BYOD_IMAGE_PATH` or `BYOD_DATASET_PATH`.\n- '
+        '**BYOD: "Upload exactly one …"** — the dialog was cancelled or several files were chosen; run the cell again.\n\n## Glossary\n\n- **ImageNet-1k:** the '
+        '1000-class label space the pretrained head predicts.\n- **Logits / softmax score:** the raw class outputs and their normalised scores; uncalibrated, '
+        'relative to the 1000 classes, not probabilities of being right.\n- **Argmax / top-k:** the highest-scoring class; the k highest, in descending order.\n- '
+        "**Input manifest:** the record of what was validated, under which ceilings, and any rejections.\n- **`not-measurable` / `sample-sanity`:** the report's "
+        'verdict without a label; with a label on a tutorial-sized sample.\n- **Backbone / head:** the feature extractor kept from pretraining; the final linear '
+        'layer, replaced and trained for your classes.\n- **Majority-class baseline:** always answering the most frequent class; accuracy must beat it to mean anything.\n- '
+        '**Fresh-boundary reload:** reloading the exported files from disk into a new pipeline, so the evaluation uses the artifact, not memory.\n- **Isolated '
+        'environment:** the separate Python environment Section 1 builds from the hash lock; every later cell runs there.\n\n## Conclusion (your notes)\n\n- On the '
+        'synthetic gradient the model answered ___ with top-1 score ___, which I read as ___.\n- After head fine-tuning the reloaded model scored ___ on the '
+        'held-out split against a majority baseline of ___.\n- The number I would not trust on its own is ___, because ___.\n- Before using this on my own images '
+        'I would check ___ and compare against ___.\n\n'
         "## References\n\n"
         "- Repository README: https://github.com/kurtvalcorza/resnet50-classification-pipeline/blob/main/README.md\n"
         "- Repository model card: https://github.com/kurtvalcorza/resnet50-classification-pipeline/blob/main/MODEL_CARD.md\n"
