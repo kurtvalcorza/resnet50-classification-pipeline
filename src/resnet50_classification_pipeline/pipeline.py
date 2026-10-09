@@ -8,13 +8,16 @@ the upstream ``pretrained_cfg`` (resize/crop/normalize) resolved through ``timm.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import random
+import zipfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 MODEL_ID = "timm/resnet50.a1_in1k"
 MODEL_REVISION = "767268603ca0cb0bfe326fa87277f19c419566ef"
@@ -237,6 +240,379 @@ def evaluation_report(
     }
 
 
+# --- Fine-tuning helpers: trainable set, held-out evaluation with its uncertainty, dataset intake ---
+
+MAX_DATASET_ARCHIVE_BYTES = 200_000_000  # a BYOD .zip larger than this is refused before it is opened
+MAX_DATASET_IMAGES = 2000  # image files per dataset archive
+MAX_DATASET_CLASSES = 100
+IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+SPLIT_DIR_NAMES = {"train": "train", "val": "val", "valid": "val", "validation": "val"}
+# RN-M5: a user's test split is never pooled into training; an archive holding one is refused before decoding.
+TEST_DIR_NAMES = {"test", "testing"}
+
+
+def _check_training_config(epochs: Any, batch_size: Any, learning_rate: Any, weight_decay: Any) -> None:
+    """Raise ValueError naming the first training setting outside its accepted range."""
+    for name, value in (("epochs", epochs), ("batch_size", batch_size)):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError(f"{name} must be a positive integer, got {value!r}")
+    if isinstance(learning_rate, bool) or not isinstance(learning_rate, int | float) or not learning_rate > 0:
+        raise ValueError(f"learning_rate must be a positive number, got {learning_rate!r}")
+    if isinstance(weight_decay, bool) or not isinstance(weight_decay, int | float) or weight_decay < 0:
+        raise ValueError(f"weight_decay must be a number >= 0, got {weight_decay!r}")
+
+
+def set_trainable(model: Any, *, train_backbone: bool) -> dict[str, Any]:
+    """Apply the fine-tuning rule to a timm classifier and count what it trains.
+
+    ``train_backbone=True`` leaves every parameter trainable (full fine-tuning); ``False`` freezes every
+    parameter except those of ``model.get_classifier()`` (head-only fine-tuning).
+    """
+    if not isinstance(train_backbone, bool):
+        raise TypeError("train_backbone must be True (full fine-tuning) or False (head only)")
+    if not train_backbone:
+        for parameter in model.parameters():
+            parameter.requires_grad_(False)
+        for parameter in model.get_classifier().parameters():
+            parameter.requires_grad_(True)
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    return {
+        "method": "full fine-tuning" if train_backbone else "head-only fine-tuning",
+        "trainable": "all" if train_backbone else "head",
+        "trainable_parameters": trainable,
+        "frozen_parameters": total - trainable,
+    }
+
+
+def trainable_parameter_counts(num_classes: int, *, train_backbone: bool) -> dict[str, Any]:
+    """The counts ``fit`` will train, computed on the bare architecture (no weights are read)."""
+    import timm
+
+    model = timm.create_model(MODEL_ID.split("/", 1)[1], pretrained=False, num_classes=num_classes)
+    return set_trainable(model, train_backbone=train_backbone)
+
+
+def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval for a binomial proportion (95 % with the default ``z``)."""
+    if n < 1 or not 0 <= successes <= n:
+        raise ValueError(f"need 0 <= successes <= n and n >= 1, got {successes}/{n}")
+    p = successes / n
+    denominator = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denominator
+    half = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / denominator
+    low = 0.0 if successes == 0 else max(0.0, centre - half)
+    high = 1.0 if successes == n else min(1.0, centre + half)
+    return low, high
+
+
+def finetune_evaluation_report(
+    true_indices: Sequence[int],
+    predicted_indices: Sequence[int],
+    class_names: Sequence[str],
+    *,
+    item_ids: Sequence[str] | None = None,
+    scores: Sequence[float] | None = None,
+    sample_kind: str = "tutorial",
+) -> dict[str, Any]:
+    """Held-out evaluation of a fine-tuned classifier, reported with its uncertainty.
+
+    The verdict is ``sample-sanity`` (never a success claim). ``comparison_to_baseline`` is read from the 95 %
+    Wilson interval of the accuracy against the majority-class baseline of the same items: ``above-baseline``
+    only when the whole interval lies above the baseline, ``below-baseline`` when it lies below, otherwise
+    ``indistinguishable-from-baseline``.
+    """
+    n = len(true_indices)
+    if n < 1 or len(predicted_indices) != n:
+        raise ValueError("true_indices and predicted_indices must be non-empty and of equal length")
+    ids = list(item_ids) if item_ids is not None else [f"item-{i}" for i in range(n)]
+    correct = sum(int(t == p) for t, p in zip(true_indices, predicted_indices, strict=True))
+    accuracy = correct / n
+    counts = {name: sum(1 for t in true_indices if t == i) for i, name in enumerate(class_names)}
+    majority_class = max(counts, key=lambda name: (counts[name], -list(class_names).index(name)))
+    baseline = counts[majority_class] / n
+    low, high = wilson_interval(correct, n)
+    if low > baseline:
+        comparison = "above-baseline"
+    elif high < baseline:
+        comparison = "below-baseline"
+    else:
+        comparison = "indistinguishable-from-baseline"
+    per_class = {
+        name: {
+            "total": counts[name],
+            "correct": sum(
+                1 for t, p in zip(true_indices, predicted_indices, strict=True) if t == i and p == i
+            ),
+        }
+        for i, name in enumerate(class_names)
+    }
+    misclassified = [
+        {
+            "id": ids[k],
+            "true_label": class_names[t],
+            "predicted_label": class_names[p],
+            **({"score": float(scores[k])} if scores is not None else {}),
+        }
+        for k, (t, p) in enumerate(zip(true_indices, predicted_indices, strict=True))
+        if t != p
+    ]
+    return {
+        "task": "single-label classification fine-tuning evaluation",
+        "verdict": "sample-sanity",
+        "sample_kind": sample_kind,
+        "n": n,
+        "correct": correct,
+        "classes": list(class_names),
+        "metrics": {
+            "accuracy": accuracy,
+            "accuracy_wilson_95": [low, high],
+            "majority_baseline_accuracy": baseline,
+            "majority_baseline_class": majority_class,
+            "accuracy_minus_baseline": accuracy - baseline,
+        },
+        "comparison_to_baseline": comparison,
+        "per_class": per_class,
+        "misclassified": misclassified,
+        "estimation": (
+            f"tutorial metric on {n} held-out image(s), not a benchmark: one seeded split, one training run, "
+            "95 % Wilson score interval for the accuracy; one image moves the accuracy by "
+            f"{100 / n:.1f} percentage points"
+        ),
+        "needs": "a larger labelled held-out set from the deployment domain for any accuracy claim",
+    }
+
+
+def synthetic_stripes_dataset(side: int = 64, per_class: int = 6, n_val: int = 2) -> dict[str, Any]:
+    """Deterministic two-class fallback (horizontal vs vertical stripes) for a runtime without the dataset."""
+    import numpy as np
+
+    if not 1 <= n_val < per_class:
+        raise ValueError("need 1 <= n_val < per_class")
+    classes = ["synthetic_horizontal_stripe", "synthetic_vertical_stripe"]
+    keys = ("train_images", "train_targets", "val_images", "val_targets")
+    split: dict[str, list[Any]] = {key: [] for key in keys}
+    ids: dict[str, list[str]] = {"train": [], "val": []}
+    digest = hashlib.sha256()
+    for cls_idx, pattern in enumerate(("horizontal", "vertical")):
+        for i in range(per_class):
+            arr = np.zeros((side, side, 3), dtype=np.uint8)
+            if pattern == "horizontal":
+                arr[::16, :, 0] = 255
+            else:
+                arr[:, ::16, 1] = 255
+            arr[:, :, 2] = (i * 30) % 255
+            digest.update(arr.tobytes())
+            part = "train" if i < per_class - n_val else "val"
+            split[f"{part}_images"].append(Image.fromarray(arr))
+            split[f"{part}_targets"].append(cls_idx)
+            ids[part].append(f"{pattern}_{i}")
+    return {
+        **split,
+        "classes": classes,
+        "train_ids": ids["train"],
+        "val_ids": ids["val"],
+        "manifest": {
+            "source": "synthetic stripes fallback (generated in code)",
+            "sha256": digest.hexdigest(),
+            "layout": "generated",
+            "classes": classes,
+            "per_class": {c: {"train": per_class - n_val, "val": n_val} for c in classes},
+            "skipped": [],
+        },
+    }
+
+
+def _decode_member(archive: Any, member: str) -> Image.Image:
+    """Open one archive member, check its size against MAX_IMAGE_SIDE before decoding, then decode to RGB."""
+    try:
+        image = Image.open(io.BytesIO(archive.read(member)))
+        validate_inputs(image, top_k=1, names=[member], num_classes=1)
+        return image.convert("RGB")
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
+        raise ValueError(
+            f"{member}: not a decodable image ({type(exc).__name__}); PNG/JPEG/WebP/BMP expected. "
+            "Remove or replace it and upload again"
+        ) from None
+    except ValueError as exc:
+        raise ValueError(f"{member}: {exc}; resize or remove it and upload again") from None
+
+
+def load_image_zip(
+    zip_bytes: bytes,
+    *,
+    seed: int,
+    validation_split: float = 0.2,
+    subset_per_class: int | None = None,
+    source: str = "uploaded archive",
+) -> dict[str, Any]:
+    """Read a class-folder image archive into a seeded train/val split, refusing bad layouts before training.
+
+    Two layouts are accepted: ``<class>/<image>`` folders, split here, or ``train/<class>/...`` plus
+    ``val/<class>/...`` (``valid``/``validation`` also accepted) used as given.
+
+    The split here is **pair-grouped** and seeded, per class. Images of one class whose file names
+    (the last path component) are equal form one group, e.g. ``original_images/frog/image_7.png`` and
+    ``darkened_images/frog/image_7.png``; a group always lands on one side of the split. Groups are
+    listed in archive order of their first image and shuffled with one ``random.Random(seed)`` shared
+    across classes (classes in archive order). With ``subset_per_class`` the leading groups are kept
+    while their image total stays within ``subset_per_class``. The first
+    ``max(1, int(n_groups * validation_split))`` kept groups are validation, the rest training. When no
+    two images share a name this equals the previous per-image split. Every image must sit
+    inside a class folder, every validation class must exist in ``train`` and every train class in
+    ``val``, a ``test/`` folder is refused (never pooled into training), at least 2 classes are needed,
+    every image is decoded and checked against ``MAX_IMAGE_SIDE`` here, and the archive limits are
+    ``MAX_DATASET_ARCHIVE_BYTES``, ``MAX_DATASET_IMAGES`` and ``MAX_DATASET_CLASSES``. Each refusal names the
+    file or class and the rule.
+    """
+    if len(zip_bytes) > MAX_DATASET_ARCHIVE_BYTES:
+        raise ValueError(
+            f"archive is {len(zip_bytes)} bytes; limit MAX_DATASET_ARCHIVE_BYTES={MAX_DATASET_ARCHIVE_BYTES}"
+        )
+    if not 0 < validation_split < 1:
+        raise ValueError(f"validation_split must be between 0 and 1, got {validation_split}")
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    except zipfile.BadZipFile:
+        raise ValueError(f"{source}: not a readable .zip archive") from None
+    with archive:
+        skipped: list[dict[str, str]] = []
+        names: list[str] = []
+        for info in archive.infolist():
+            name = info.filename
+            unsafe = ".." in name.replace("\\", "/").split("/") or name.startswith(("/", "\\"))
+            if unsafe or ":" in name.split("/")[0]:
+                raise ValueError(f"{name}: illegal path (absolute or '..'); refusing the archive")
+            if info.is_dir():
+                continue
+            if name.startswith("__MACOSX") or name.rsplit("/", 1)[-1].startswith("."):
+                skipped.append({"file": name, "reason": "system metadata"})
+            elif name.lower().endswith(IMAGE_SUFFIXES):
+                names.append(name)
+            else:
+                skipped.append({"file": name, "reason": f"not an image ({', '.join(IMAGE_SUFFIXES)})"})
+        if not names:
+            raise ValueError(f"{source}: no image files ({', '.join(IMAGE_SUFFIXES)}) found")
+        if len(names) > MAX_DATASET_IMAGES:
+            raise ValueError(f"{source}: {len(names)} images; limit MAX_DATASET_IMAGES={MAX_DATASET_IMAGES}")
+
+        def parts_of(name: str) -> list[str]:
+            return name.strip("/").split("/")
+
+        for name in names:
+            if any(p.lower() in TEST_DIR_NAMES for p in parts_of(name)[:-1]):
+                raise ValueError(
+                    f"{name}: the archive has a test/ folder. This notebook holds out its own validation "
+                    "split and would otherwise pool your test images into training; remove test/ (keep it "
+                    "for a final check outside this notebook) or rename it to val/"
+                )
+
+        def split_of(name: str) -> str | None:
+            found = {SPLIT_DIR_NAMES[p.lower()] for p in parts_of(name)[:-1] if p.lower() in SPLIT_DIR_NAMES}
+            return found.pop() if len(found) == 1 else ("ambiguous" if found else None)
+
+        def class_of(name: str) -> str:
+            parts = parts_of(name)
+            if len(parts) < 2 or parts[-2].lower() in SPLIT_DIR_NAMES:
+                raise ValueError(
+                    f"{name}: image is not inside a class folder; put every image in <class>/ "
+                    "(or train/<class>/ and val/<class>/)"
+                )
+            return parts[-2]
+
+        splits = {name: split_of(name) for name in names}
+        if any(s == "ambiguous" for s in splits.values()):
+            bad = next(n for n, s in splits.items() if s == "ambiguous")
+            raise ValueError(f"{bad}: path names both a train and a val folder")
+        presplit = "train" in splits.values() and "val" in splits.values()
+        if presplit and any(s is None for s in splits.values()):
+            bad = next(n for n, s in splits.items() if s is None)
+            raise ValueError(f"{bad}: the archive has train/ and val/ folders, so every image must be in one")
+
+        files: dict[str, dict[str, list[str]]] = {}
+        for name in names:
+            part = splits[name] if presplit else "all"
+            files.setdefault(class_of(name), {}).setdefault(part, []).append(name)
+        if presplit:
+            classes = sorted(c for c, parts in files.items() if parts.get("train"))
+            missing = sorted(c for c, parts in files.items() if not parts.get("train"))
+            if missing:
+                raise ValueError(
+                    f"class(es) {missing} appear in val/ but not in train/; each val class needs train images"
+                )
+        else:
+            classes = sorted(files)
+        if len(classes) < 2:
+            raise ValueError(f"classification needs at least 2 classes, found {len(classes)}: {classes}")
+        if len(classes) > MAX_DATASET_CLASSES:
+            raise ValueError(f"{len(classes)} classes; limit MAX_DATASET_CLASSES={MAX_DATASET_CLASSES}")
+        index = {c: i for i, c in enumerate(classes)}
+
+        chosen: dict[str, dict[str, list[str]]] = {}
+        if presplit:
+            if not any(parts.get("val") for parts in files.values()):
+                raise ValueError("val/ holds no images")
+            no_val = sorted(c for c in classes if not files[c].get("val"))
+            if no_val:
+                raise ValueError(
+                    f"class(es) {no_val} appear in train/ but not in val/; every class needs >= 1 val image "
+                    "so its accuracy can be measured"
+                )
+            chosen = {c: {"train": files[c]["train"], "val": files[c].get("val", [])} for c in files}
+        else:
+            rng = random.Random(seed)
+            for cls, parts in files.items():
+                grouped: dict[str, list[str]] = {}
+                for name in parts["all"]:
+                    grouped.setdefault(parts_of(name)[-1], []).append(name)
+                groups = list(grouped.values())
+                if len(groups) < 2:
+                    raise ValueError(
+                        f"class {cls!r} has {len(groups)} image group(s) (images sharing a file name are "
+                        "one group); each class needs >= 2 for a train/val split"
+                    )
+                rng.shuffle(groups)
+                if subset_per_class:
+                    kept, total = [], 0
+                    for group in groups:
+                        if total + len(group) > subset_per_class:
+                            break
+                        kept.append(group)
+                        total += len(group)
+                    if len(kept) < 2:
+                        raise ValueError(f"class {cls!r}: subset_per_class={subset_per_class} < 2 groups")
+                    groups = kept
+                n_val = max(1, int(len(groups) * validation_split))
+                chosen[cls] = {
+                    "train": [name for group in groups[n_val:] for name in group],
+                    "val": [name for group in groups[:n_val] for name in group],
+                }
+
+        out: dict[str, Any] = {"train_images": [], "train_targets": [], "val_images": [], "val_targets": [],
+                               "train_ids": [], "val_ids": []}
+        for cls, parts in chosen.items():
+            for part in ("train", "val"):
+                for member in parts[part]:
+                    out[f"{part}_images"].append(_decode_member(archive, member))
+                    out[f"{part}_targets"].append(index[cls])
+                    out[f"{part}_ids"].append(member)
+    out["classes"] = classes
+    out["manifest"] = {
+        "source": source,
+        "sha256": hashlib.sha256(zip_bytes).hexdigest(),
+        "bytes": len(zip_bytes),
+        "layout": "train/ and val/ folders" if presplit else "class folders, seeded pair-grouped split",
+        "validation_split": None if presplit else validation_split,
+        "seed": None if presplit else seed,
+        "subset_per_class": None if presplit else subset_per_class,
+        "classes": classes,
+        "per_class": {c: {"train": len(chosen[c]["train"]), "val": len(chosen[c]["val"])} for c in classes},
+        "images_in_archive": len(names),
+        "skipped": skipped,
+    }
+    return out
+
+
 @dataclass
 class ResNet50ClassificationPipeline:
     """``_runner`` maps a float tensor (N, 3, H, W) to logits (N, NUM_CLASSES); injectable for tests."""
@@ -331,8 +707,18 @@ class ResNet50ClassificationPipeline:
         weights_dir: str | Path | None = None,
         output_dir: str | Path | None = None,
         allow_download: bool = False,
+        train_backbone: bool = True,
+        provenance: Mapping[str, Any] | None = None,
     ) -> tuple[ResNet50ClassificationPipeline, dict[str, Any]]:
-        """Fine-tune the ResNet-50 model on custom classes 100% in-kernel."""
+        """Fine-tune on custom classes in-process: a new linear classifier sized to ``class_names``.
+
+        ``train_backbone=True`` (the default) is **full fine-tuning**: AdamW updates every parameter, the
+        pretrained backbone included. ``train_backbone=False`` freezes everything except the new classifier
+        (``model.get_classifier()``) and keeps every BatchNorm layer in eval mode, so its running statistics
+        stay pretrained: head-only fine-tuning, where only ``fc.*`` changes. The training configuration, the
+        trainable/frozen parameter counts and ``provenance`` (e.g. the dataset source, digest and split sizes)
+        are returned under ``config`` and written into ``model-config.json`` with the artifact.
+        """
         import timm
         import torch
         import torch.nn.functional as F
@@ -344,8 +730,12 @@ class ResNet50ClassificationPipeline:
         num_classes = len(class_names)
         if num_classes < 2:
             raise ValueError(f"classification requires at least 2 classes, got {num_classes}")
+        _check_training_config(epochs, batch_size, learning_rate, weight_decay)
         arch_name = MODEL_ID.split("/", 1)[1]
 
+        # timm's training transforms (random-resized crop, flip, interpolation) use from Python's `random`, so
+        # it is seeded too: with only torch seeded, two CPU runs with the same seed trained differently.
+        random.seed(seed)
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
@@ -408,11 +798,36 @@ class ResNet50ClassificationPipeline:
             shuffle=False,
         )
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        counts = set_trainable(model, train_backbone=train_backbone)
+        config = {
+            "method": counts["method"],
+            "trainable": counts["trainable"],
+            "trainable_parameters": counts["trainable_parameters"],
+            "frozen_parameters": counts["frozen_parameters"],
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "weight_decay": weight_decay,
+            "seed": seed,
+            "batchnorm_statistics": "updated in training" if train_backbone else "frozen (eval mode)",
+            "optimizer": "AdamW",
+            "loss": "cross-entropy",
+            "train_samples": len(train_targets),
+            "val_samples": len(val_targets),
+            **({"dataset": dict(provenance)} if provenance else {}),
+        }
+        trainable_params = [p for p in model.parameters() if p.requires_grad]
+        optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
         history = []
 
         for epoch in range(epochs):
             model.train()
+            if not train_backbone:
+                # RN-M3: a frozen backbone stays frozen. ResNet-50's BatchNorm running statistics update in
+                # train() mode even with requires_grad False, so those layers are kept in eval() mode.
+                for module in model.modules():
+                    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+                        module.eval()
             train_loss_sum, train_count = 0.0, 0
             for inputs, targets in train_loader:
                 inputs = inputs.to(resolved_device)
@@ -457,16 +872,21 @@ class ResNet50ClassificationPipeline:
                 "model_id": MODEL_ID,
                 "model_revision": MODEL_REVISION,
                 "data_config": data_config,
+                "fine_tuning": config,
             }
             with open(out_path / "model-config.json", "w", encoding="utf-8") as fh:
                 json.dump(config_payload, fh, indent=2)
+
+        model.eval()
 
         def runner(batch: Any) -> Any:
             with torch.inference_mode():
                 return model(batch.to(resolved_device))
 
         pipeline = cls(runner, eval_transform, resolved_device, tuple(class_names), "fine-tuned")
-        return pipeline, {"history": history, "class_names": list(class_names), "device": resolved_device}
+        return pipeline, {
+            "history": history, "class_names": list(class_names), "device": resolved_device, "config": config
+        }
 
     def _validate(self, images: Any, top_k: int) -> list[Image.Image]:
         max_classes = len(self.labels) if self.labels else NUM_CLASSES
