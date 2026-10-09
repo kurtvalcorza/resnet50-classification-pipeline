@@ -131,7 +131,7 @@ def test_release_record_no_longer_counts_the_restarted_run_as_a_pass() -> None:
     # RN-m5: the 2026-09-14 Kaggle row of the previous blob is no longer a PASS (the workshop's own rows stay).
     row = next(line for line in text.splitlines() if line.startswith("| 2026-09-14 | `b7e787d`"))
     assert "Restart status not recorded; not promotion evidence." in row and "**PASSED**" not in row
-    assert "No hosted run of the current notebook blob is recorded yet" in text
+    assert "**One pass, no restart, 0 errors**, 14/14 code cells" in text
     status = (ROOT / "STATUS.md").read_text(encoding="utf-8")
     assert "Current status: **Candidate" in status
 

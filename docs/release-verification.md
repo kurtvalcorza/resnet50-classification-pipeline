@@ -125,6 +125,45 @@ they are measurements for the stated runtime, not general estimates.
 |---|---|---|---|---|---|
 | 2026-09-14 | `b7e787d` / `77dc7ebd3d7b` | Kaggle Tesla T4 (`kurtvalcorza/dimer-nb2-resnet50-classification` v1) | Default sample path of the previous notebook version (in-kernel install, 16 images per class) | 182.3 s | **Restart status not recorded; not promotion evidence.** Recorded at the time as "10/10 ok code cells executed cleanly, 8 files, 103 MB staged"; no executed notebook and no fine-tuning numbers were archived, and the kernel could not be re-opened for review (permission denied). That blob pip-installed into the live kernel behind a restart-on-stale-import guard, so whether a restart occurred is unknown. Superseded by the review fixes (isolated environment, no restart); the current blob has no hosted run yet. |
 | 2026-10-04 | `26eb545` / `b8c151140103` | Google Colab (browser, maintainer-run), Tesla T4 | `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb` revision 0.3.0-candidate, default `Run all` (toggles at defaults) | not recorded (setup 65 s) | **PASSED** — 23/23 code cells, counts 1–23, 0 errors; metrics equal the 2026-09-28 run ([record](#maintainer-supplied-colab-execution-of-revision-030--2026-10-04)) |
+| 2026-10-09 | `72a6cda` / `75e7e1ee065d` | Colab CLI 0.7.4 sequential execution, fresh Colab Tesla T4 (session `suite-resnet50-72a6cda-8a5f`) | Default path only (`TRAINABLE = 'head'`; inference, head-only fine-tuning, reload, held-out evaluation) | 86.5 s | **One pass, no restart, 0 errors**, 14/14 code cells. Held-out **34/40 = 85.0 %, 95 % Wilson 70.9 %–92.9 %**, above the 50 % majority baseline (verdict `sample-sanity`, `above-baseline`). See the record below. |
+
+### 2026-10-09 — Colab CLI one-pass run of `72a6cda` (fresh Colab Tesla T4)
+
+- **Commit / notebook blob:** `72a6cda3e3c4fec7d18404ef6c33ca8ada9f7e6b` / `75e7e1ee065d7dfd7a0cf2724d47b87889818dd2`
+  (blob checked against the fetched bytes before the VM was allocated; executed code-cell sources equal the commit's).
+- **Executor:** Colab CLI 0.7.4 sequential execution (`colab exec -f`), fresh Colab VM, Tesla T4, no repository
+  checkout, clean model cache. This is **not** a browser `Run all`: the CLI sets no execution counts, so cell order is
+  evidenced by `exec.log` (`Executing cell 1/14` … `14/14`, in order); forms were not rendered.
+- **Path:** default settings only (`USE_BYOD = False`, `GROUND_TRUTH_INDEX = -1`, `USE_BYOD_DATASET = False`,
+  `TRAINABLE = 'head'`). Wall time 86.5 s (suite wall clock, including the isolated install and the model download).
+- **Outcome:** **one pass, no restart, 0 errors**; 14/14 code cells; cell 4 (the carried module definition) prints
+  nothing by design. One Pillow `DeprecationWarning` (`mode` parameter) in the sample cell.
+- **Runtime:** isolated Python 3.12.12 (kernel 3.13.15), 45 locked packages, setup 50 s, torch 2.14.0+cu130,
+  timm 1.0.29, `cuda: True`, device `cuda:0`; `NOTEBOOK_SOURCE.repository_revision` `3322040e` =
+  `metadata.dimer.generated_from` (the generation-time HEAD).
+- **Model:** `timm/resnet50.a1_in1k` @ `767268603ca0cb0bfe326fa87277f19c419566ef` (apache-2.0, 3 files,
+  102,509,031 bytes), all three fetched, verified and loaded with `source == 'local-snapshot'`.
+- **Inference:** synthetic 256×256 gradient (RGB SHA-256 `e38db00b…`), input manifest `accepted` with the oversized
+  probe `rejected`; `decision_rule == 'argmax'`, top-1 `web site, website, internet site, site` (916) at 0.0392;
+  evaluation report `not-measurable` (no ground truth).
+- **Section 8:** tutorial dataset `Cleanlab/cifar-10-subset @ bb5a7aab`, SHA-256 `66f90a4f…`; pair-grouped split
+  80 train / 20 held out per class (160 / 40), `held_out_sharing_a_file_name_with_train: 0`.
+- **Section 9:** head-only fine-tuning, 4,098 trainable / 23,508,032 frozen parameters, 1 epoch, batch 4,
+  lr 1e-4; train loss 0.6823, val loss 0.6285, val accuracy 0.85.
+- **Section 10:** reload `source == 'fine-tuned-artifact'`, 40/40 label agreement, max score difference 0.0,
+  `equivalent: True`. Held-out **34/40 = 85.0 %**, 95 % Wilson interval **70.9 % to 92.9 %**, majority baseline
+  50.0 % (`frog`), verdict `sample-sanity`, `comparison_to_baseline: above-baseline`; frog 14/20, truck 20/20;
+  misclassified: both copies of `frog/image_42.png`, `frog/image_9.png` and `frog/image_65.png` (scores 0.50–0.52).
+  These equal the worked answers' local CPU figures (loss 0.68 / 0.63, 34/40, interval 71–93 %, gradient top-1
+  `web site` 0.0392).
+- **Exports:** the result JSON, top-k CSV, validation-predictions CSV, input manifest, both evaluation reports and
+  `resnet50_classification_finetuned/{model.safetensors,model-config.json}` were written.
+- **Evidence files** (`docs/execution-evidence/2026-10-09-72a6cda/`, byte-for-byte from the run directory):
+  - `resnet50_classification_colab_72a6cda_colab-cli-t4_output.ipynb` — SHA-256 `5685e628f60385a389465448bb72d08b2fd4a74c5287f44f7869905ca9f8c05c`
+  - `exec.log` — SHA-256 `c3dcfc2e41d12e2644f6fb2819b6e06c8cc75964f34c90c41e1305a078e5b543`
+  - `run_summary.json` — SHA-256 `7263c9b9969b9aa8e9c2b1bf79c2fb942638110743e04e053f34319fe549dddf`
+- **Not exercised:** the BYOD image and BYOD dataset gates (step 7), the Section 12 activity (`TRAINABLE = 'all'`)
+  and any other optional journey; no browser interaction.
 
 ## Current status
 
@@ -137,9 +176,10 @@ training, a working fallback, a reload equivalence check and the guided layer. S
 `--check`, ruff and the offline unit suite pass on this source. A local Windows CPU check of every code cell with the
 real pinned weights (2026-10-09, not clean-runtime evidence) gave held-out 34/40 (Wilson 70.9 %–92.9 %,
 `above-baseline`) for head-only and 21/40 (`indistinguishable-from-baseline`) for the Section 12 full fine-tuning.
-No hosted run of the current notebook blob is recorded yet. Remaining gates: a one-pass hosted `Run all` of the
-current blob, the BYOD release gate (step 7) on a hosted runtime and a reviewer's confirmation of the recorded run
-against the blob under review. The registry status remains **Candidate** until an integrator promotes it;
+A one-pass hosted run of the current notebook blob `75e7e1ee` is recorded above (2026-10-09, Colab CLI sequential
+execution on a fresh Tesla T4, default path, 14/14 cells, no restart, held-out 34/40, Wilson 70.9 %–92.9 %).
+Remaining gates: the BYOD release gate (step 7) on a hosted runtime and a reviewer's confirmation of the recorded
+run against the blob under review. The registry status remains **Candidate** until an integrator promotes it;
 promotion is not performed by the builder.
 
 ## Supplemental modern image classification workshop — `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb`

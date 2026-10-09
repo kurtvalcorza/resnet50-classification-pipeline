@@ -51,7 +51,7 @@ python -c "from resnet50_classification_pipeline import *; print(ResNet50Classif
 
 ## Release status
 
-**Candidate.** Static/unit checks do not constitute clean-runtime notebook evidence. The review fixes (RN-M1..M5, RN-m1..m6) regenerated the notebook and no one-pass hosted `Run all` of the current blob is recorded yet (the 2026-09-14 Kaggle run of the previous blob did not record whether a restart occurred and is not promotion evidence); complete `docs/release-verification.md` against the exact release revision before calling the notebook release-grade.
+**Candidate.** Static/unit checks do not constitute clean-runtime notebook evidence. The review fixes (RN-M1..M5, RN-m1..m6) regenerated the notebook; the current blob `75e7e1ee065d` (commit `72a6cda`) completed one pass with no restart and 0 errors on a fresh Colab Tesla T4 on 2026-10-09 (Colab CLI sequential execution, 14/14 code cells; held-out 34/40, 95 % Wilson 70.9–92.9 %, above the majority baseline), and the BYOD gate is still open (the 2026-09-14 Kaggle run of the previous blob did not record whether a restart occurred and is not promotion evidence); complete `docs/release-verification.md` against the exact release revision before calling the notebook release-grade.
 
 ## Documents
 
