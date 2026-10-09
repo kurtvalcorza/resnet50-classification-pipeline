@@ -3,7 +3,7 @@
 `tutorials/resnet50_classification_colab.ipynb` (`E2E`) is a **release candidate** until
 the exact notebook revision has executed top-to-bottom in a clean supported runtime. Unit tests,
 JSON validation, code-cell compilation, and `tools/validate_release_assets.py` are necessary
-checks but are **not** runtime evidence under DIMER Notebook Specification 2.0. This file is
+checks but are **not** runtime evidence under DIMER Notebook Specification 2.2. This file is
 the durable release-gate record for the notebook.
 
 ## Automatic coverage (static, every pull request)
@@ -14,12 +14,14 @@ CI runs `tools/validate_release_assets.py`, which checks:
   persisted outputs or execution counts; no unresolved placeholder markers; every code cell
   is preceded by an explanatory markdown cell;
 - exactly one tutorial notebook, named in `tutorials/README.md` with its `E2E`
-  profile, the notebook-spec version and the standalone carrier; `metadata.dimer` declares that profile, spec `2.0`, `standalone: true` and `generated_from` (repository, module commit, module SHA-256, generator);
+  profile, the notebook-spec version and the standalone carrier; `metadata.dimer` declares that profile, spec `2.2`, `standalone: true` and `generated_from` (repository, module commit, module SHA-256, generator);
 - the standalone carrier (ST1–ST6, PAR1–PAR3): no clone, repository install or repository import on the
   primary path; exactly one cell tagged `embedded_module` equal to `src/resnet50_classification_pipeline/pipeline.py`
   after the generator's documented rewrites; the inline `MANIFEST` equal to the committed snapshot manifest and the
   inline `PINS` equal to the `pyproject.toml` runtime pins; the notebook byte-identical to `tools/build_notebook.py`
-  output; the pinned-install cell with its restart-on-stale-import guard; `NOTEBOOK_SOURCE` recorded in exports;
+  output; exactly two kernel cells — the isolated install (pinned `uv` wheel checked by size and SHA-256, managed
+  CPython, `--require-hashes --only-binary :all:` from the carried hash lock) and the router — with every later cell
+  routed to the isolated environment; `NOTEBOOK_SOURCE` recorded in exports;
 - `MODEL_ID`/`MODEL_REVISION` are bound only in the carried module cell (and repeated in the inline manifest,
   which the notebook asserts against the module before fetching), the revision is a 40-hex immutable commit, and the same identity string appears in `README.md`,
   `MODEL_CARD.md`, and `docs/WEIGHTS.md` with no stray revisions;
@@ -31,6 +33,12 @@ CI runs `tools/validate_release_assets.py`, which checks:
   primary path, a mutable `revision='main'`, direct `timm.create_model` / `from timm import` / `from torchvision import` /
   `from transformers import` / `from huggingface_hub import` use **outside the carried module cell**, `trust_remote_code=True`,
   `pickle.load`, `torch.load(`, `extractall(`);
+- the review fixes (RN-M1..M5, RN-m1..m6): the fine-tuning configuration, trainable set and dataset provenance are
+  printed and exported, the held-out verdict comes from `finetune_evaluation_report` (no literal verdict), the
+  fallback and BYOD archives go through `synthetic_stripes_dataset` / `load_image_zip`, the reload is compared with
+  the in-memory model, stale learner-facing claims are absent, and the guided layer (who it is for, how to use,
+  roadmap, predictions, *What to notice*, worked answers, the Section 12 activity, troubleshooting, glossary,
+  conclusion; Infrastructure titles on the five setup cells) is present;
 - `STATUS.md`, `README.md` and `tutorials/README.md` agree on one release-status token and no
   document makes an unsupported release-grade, production-readiness or benchmark claim;
 - `MODEL_CARD.md` front matter, single H1, required heading order, and immutable provenance.
@@ -43,44 +51,64 @@ source/provenance and unit checks. They are **not** execution evidence.
 
 | Path | Runtime | Role |
 |---|---|---|
-| Google Colab (supported user path) | Colab CPU runtime (CUDA used automatically when present) | The runtime the tutorial is written for; a clean top-to-bottom run here is promotion evidence |
-| Kaggle CLI kernel | Kaggle CPU kernel, Python 3.12 image | Reproducible clean-room executor of the same class; the notebook is pushed verbatim plus one leading shim cell that provides `google.colab` and chdirs to a scratch directory (no repository checkout is needed — the notebook is standalone) |
-| Local WSL harness (pre-flight only) | Workstation, sequential cell executor with a `google.colab` shim | Builder pre-flight to catch defects before spending cloud runs; **not** a supported runtime and not promotion evidence |
+| Google Colab (supported user path) | Colab runtime, Linux x86_64 (T4 GPU or CPU; CUDA used automatically when present) | The runtime the tutorial is written for; a one-pass top-to-bottom `Run all` here is promotion evidence |
+| Colab CLI / Kaggle kernel | Fresh Linux x86_64 VM (Tesla T4) | Clean-room executor of the same class; the notebook is executed verbatim (Kaggle: plus one leading shim cell that provides `google.colab` and chdirs to a scratch directory). No repository checkout is needed — the notebook is standalone |
+| Local harness (pre-flight only) | Workstation, sequential cell executor with `DIMER_NOTEBOOK_CI_PREINSTALLED=1` and a `google.colab` shim | Builder pre-flight to catch defects before spending cloud runs; **not** a supported runtime and not promotion evidence |
+
+The notebook supports **Linux x86_64 runtimes only**: its isolated environment is built from manylinux wheels, and
+Section 1 stops with that message on Windows or macOS.
 
 ## Supported release verification procedure
 
 Before changing the registry status from `Candidate` to `Release-grade`:
 
 1. resolve the exact PR/commit head under review and confirm static CI is green;
-2. open that exact notebook revision in a new CPU (or CUDA) runtime (Colab, or the Kaggle
-   executor above) with **no repository checkout** and a clean model cache;
-3. run the notebook top-to-bottom without editing implementation cells (form parameters at their
-   defaults for the sample path: `USE_BYOD = False`, `GROUND_TRUTH_INDEX = -1`);
-4. verify that Section 1 reports `NOTEBOOK_SOURCE.repository_revision` equal to the module commit recorded in
-   `metadata.dimer.generated_from` and that the installed core package versions equal the inline `PINS` (= `pyproject.toml`);
+2. open that exact notebook revision in a new Linux x86_64 runtime (Colab, or the executors above) with **no
+   repository checkout** and a clean model cache;
+3. choose **Run all once** without editing implementation cells (form parameters at their defaults:
+   `USE_BYOD = False`, `GROUND_TRUTH_INDEX = -1`, `USE_BYOD_DATASET = False`, `TRAINABLE = 'head'`); a run that needs
+   a restart or a second pass is not a `Run all` PASS and must be recorded as such;
+4. verify that Section 1 builds the isolated environment (`isolated_python` 3.12.12, the locked package count) and
+   that the runtime cell reports `NOTEBOOK_SOURCE.repository_revision` equal to the module commit recorded in
+   `metadata.dimer.generated_from` and the installed core package versions equal to the inline `PINS` (= `pyproject.toml`);
 5. verify every default-path stage completes:
-   - pinned runtime installed from the inline `PINS` with no GitHub access;
    - the carried module cell executes (defines the pipeline class and helpers) with no import of the repository package;
-   - synthetic 256×256 gradient sample generated in code with its RGB SHA-256 printed and the
-     ceilings (`NUM_CLASSES` 1000, `MAX_IMAGE_SIDE` 4096, `MAX_BATCH` 64) surfaced;
    - pinned `timm/resnet50.a1_in1k` acquisition at the immutable revision through the package:
      the inline `MANIFEST` is asserted against the module identity and written to `weights/resnet50-a1/`,
      `stage_missing_files(WEIGHTS_DIR, allow_download=True)` reports all three manifest entries
      (`README.md`, `config.json`, `model.safetensors`) on a clean runtime, `verify_snapshot` returns the manifest dict, and `from_pretrained(weights_dir=WEIGHTS_DIR)` reports
      `source == 'local-snapshot'`;
-   - classification through `predict(image, top_k=5)` with `decision_rule == 'argmax'` and a
-     rank-ordered top-5 list;
+   - synthetic 256×256 gradient sample generated in code with its RGB SHA-256 printed and the
+     ceilings (`NUM_CLASSES` 1000, `MAX_IMAGE_SIDE` 4096, `MAX_BATCH` 64) surfaced;
    - `validate_inputs` writes `outputs/resnet50_classification_input_manifest.json` (verdict `accepted`, one recorded
      rejection finding from the oversized probe);
+   - classification through `predict(image, top_k=5)` with `decision_rule == 'argmax'` and a
+     rank-ordered top-5 list;
    - `evaluation_report` writes `outputs/resnet50_classification_evaluation_report.json` with verdict `not-measurable`
      on the synthetic sample (no ground truth), stated as such;
-   - `outputs/resnet50_classification_result.json` and `outputs/resnet50_classification_top_k.csv`
-     written with `NOTEBOOK_SOURCE`, model revision, model licence, runtime versions and device;
+   - Section 8: the tutorial dataset is downloaded and digest-verified (`66f90a4f…`, not the synthetic fallback), with
+     a pair-grouped split of 80 training and 20 held-out images per class (both copies of a photo on one side) and
+     `held_out_sharing_a_file_name_with_train: 0`;
+   - Section 9: `head-only fine-tuning` with 4,098 trainable and 23,508,032 frozen parameters printed before training
+     (BatchNorm statistics frozen),
+     and the one-epoch history;
+   - Section 10: the reloaded artifact reports `source == 'fine-tuned-artifact'` and `equivalent: True`, and the
+     held-out report prints `n = 40`, the count, the 95 % Wilson interval, the majority baseline, the verdict
+     `sample-sanity` and `comparison_to_baseline`;
+   - `outputs/resnet50_classification_result.json` (with `fine_tuning.config`, `fine_tuning.dataset`,
+     `fine_tuning.evaluation` and `fine_tuning.artifact_sha256`), `outputs/resnet50_classification_top_k.csv`,
+     `outputs/resnet50_classification_validation_predictions.csv`,
+     `outputs/resnet50_classification_finetuned_evaluation_report.json` and
+     `outputs/resnet50_classification_finetuned/{model.safetensors,model-config.json}` (with `fine_tuning` in the
+     config) are written with `NOTEBOOK_SOURCE`, model revision, model licence, runtime versions and device;
 6. verify the exports exist and the interpretation section matches the observed path;
-7. record the notebook Git blob id, commit, runtime (platform, Python, PyTorch, timm, device),
-   model identifier and immutable revision, whether the model cache was clean, outcome, produced
-   outputs, and any warning or applicable `SHOULD` deviation in the table below;
-8. record no access tokens or other secrets.
+7. exercise the BYOD gates (REL12): one compatible and one incompatible dataset archive through Section 8 (the
+   incompatible one must be refused before training with the file or class named), and optionally one BYOD image;
+8. record the notebook Git blob id, commit, runtime (platform, Python, PyTorch, timm, device),
+   model identifier and immutable revision, whether the model cache was clean, `restarted: false`, outcome, the
+   held-out count with its interval, produced outputs, and any warning or applicable `SHOULD` deviation in the table
+   below;
+9. record no access tokens or other secrets.
 
 A known-failing default path in the supported runtime blocks release.
 
@@ -95,21 +123,64 @@ they are measurements for the stated runtime, not general estimates.
 
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
-| 2026-09-14 | `b7e787d` / `77dc7ebd3d7b` | Kaggle T4 (`kurtvalcorza/dimer-nb2-resnet50-classification` v1) | Default sample path | 182.3 s | **PASSED** — 10/10 ok code cells executed cleanly, 8 files, 103 MB staged |
+| 2026-09-14 | `b7e787d` / `77dc7ebd3d7b` | Kaggle Tesla T4 (`kurtvalcorza/dimer-nb2-resnet50-classification` v1) | Default sample path of the previous notebook version (in-kernel install, 16 images per class) | 182.3 s | **Restart status not recorded; not promotion evidence.** Recorded at the time as "10/10 ok code cells executed cleanly, 8 files, 103 MB staged"; no executed notebook and no fine-tuning numbers were archived, and the kernel could not be re-opened for review (permission denied). That blob pip-installed into the live kernel behind a restart-on-stale-import guard, so whether a restart occurred is unknown. Superseded by the review fixes (isolated environment, no restart); the current blob has no hosted run yet. |
 | 2026-10-04 | `26eb545` / `b8c151140103` | Google Colab (browser, maintainer-run), Tesla T4 | `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb` revision 0.3.0-candidate, default `Run all` (toggles at defaults) | not recorded (setup 65 s) | **PASSED** — 23/23 code cells, counts 1–23, 0 errors; metrics equal the 2026-09-28 run ([record](#maintainer-supplied-colab-execution-of-revision-030--2026-10-04)) |
+| 2026-10-09 | `72a6cda` / `75e7e1ee065d` | Colab CLI 0.7.4 sequential execution, fresh Colab Tesla T4 (session `suite-resnet50-72a6cda-8a5f`) | Default path only (`TRAINABLE = 'head'`; inference, head-only fine-tuning, reload, held-out evaluation) | 86.5 s | **One pass, no restart, 0 errors**, 14/14 code cells. Held-out **34/40 = 85.0 %, 95 % Wilson 70.9 %–92.9 %**, above the 50 % majority baseline (verdict `sample-sanity`, `above-baseline`). See the record below. |
+
+### 2026-10-09 — Colab CLI one-pass run of `72a6cda` (fresh Colab Tesla T4)
+
+- **Commit / notebook blob:** `72a6cda3e3c4fec7d18404ef6c33ca8ada9f7e6b` / `75e7e1ee065d7dfd7a0cf2724d47b87889818dd2`
+  (blob checked against the fetched bytes before the VM was allocated; executed code-cell sources equal the commit's).
+- **Executor:** Colab CLI 0.7.4 sequential execution (`colab exec -f`), fresh Colab VM, Tesla T4, no repository
+  checkout, clean model cache. This is **not** a browser `Run all`: the CLI sets no execution counts, so cell order is
+  evidenced by `exec.log` (`Executing cell 1/14` … `14/14`, in order); forms were not rendered.
+- **Path:** default settings only (`USE_BYOD = False`, `GROUND_TRUTH_INDEX = -1`, `USE_BYOD_DATASET = False`,
+  `TRAINABLE = 'head'`). Wall time 86.5 s (suite wall clock, including the isolated install and the model download).
+- **Outcome:** **one pass, no restart, 0 errors**; 14/14 code cells; cell 4 (the carried module definition) prints
+  nothing by design. One Pillow `DeprecationWarning` (`mode` parameter) in the sample cell.
+- **Runtime:** isolated Python 3.12.12 (kernel 3.13.15), 45 locked packages, setup 50 s, torch 2.14.0+cu130,
+  timm 1.0.29, `cuda: True`, device `cuda:0`; `NOTEBOOK_SOURCE.repository_revision` `3322040e` =
+  `metadata.dimer.generated_from` (the generation-time HEAD).
+- **Model:** `timm/resnet50.a1_in1k` @ `767268603ca0cb0bfe326fa87277f19c419566ef` (apache-2.0, 3 files,
+  102,509,031 bytes), all three fetched, verified and loaded with `source == 'local-snapshot'`.
+- **Inference:** synthetic 256×256 gradient (RGB SHA-256 `e38db00b…`), input manifest `accepted` with the oversized
+  probe `rejected`; `decision_rule == 'argmax'`, top-1 `web site, website, internet site, site` (916) at 0.0392;
+  evaluation report `not-measurable` (no ground truth).
+- **Section 8:** tutorial dataset `Cleanlab/cifar-10-subset @ bb5a7aab`, SHA-256 `66f90a4f…`; pair-grouped split
+  80 train / 20 held out per class (160 / 40), `held_out_sharing_a_file_name_with_train: 0`.
+- **Section 9:** head-only fine-tuning, 4,098 trainable / 23,508,032 frozen parameters, 1 epoch, batch 4,
+  lr 1e-4; train loss 0.6823, val loss 0.6285, val accuracy 0.85.
+- **Section 10:** reload `source == 'fine-tuned-artifact'`, 40/40 label agreement, max score difference 0.0,
+  `equivalent: True`. Held-out **34/40 = 85.0 %**, 95 % Wilson interval **70.9 % to 92.9 %**, majority baseline
+  50.0 % (`frog`), verdict `sample-sanity`, `comparison_to_baseline: above-baseline`; frog 14/20, truck 20/20;
+  misclassified: both copies of `frog/image_42.png`, `frog/image_9.png` and `frog/image_65.png` (scores 0.50–0.52).
+  These equal the worked answers' local CPU figures (loss 0.68 / 0.63, 34/40, interval 71–93 %, gradient top-1
+  `web site` 0.0392).
+- **Exports:** the result JSON, top-k CSV, validation-predictions CSV, input manifest, both evaluation reports and
+  `resnet50_classification_finetuned/{model.safetensors,model-config.json}` were written.
+- **Evidence files** (`docs/execution-evidence/2026-10-09-72a6cda/`, byte-for-byte from the run directory):
+  - `resnet50_classification_colab_72a6cda_colab-cli-t4_output.ipynb` — SHA-256 `5685e628f60385a389465448bb72d08b2fd4a74c5287f44f7869905ca9f8c05c`
+  - `exec.log` — SHA-256 `c3dcfc2e41d12e2644f6fb2819b6e06c8cc75964f34c90c41e1305a078e5b543`
+  - `run_summary.json` — SHA-256 `7263c9b9969b9aa8e9c2b1bf79c2fb942638110743e04e053f34319fe549dddf`
+- **Not exercised:** the BYOD image and BYOD dataset gates (step 7), the Section 12 activity (`TRAINABLE = 'all'`)
+  and any other optional journey; no browser interaction.
 
 ## Current status
 
-No clean-runtime execution of the notebook has been recorded yet; clean GPU execution evidence is now recorded below. Static validation (`tools/validate_release_assets.py`), nbformat validation, a
-`compile()` sweep over every code cell, and the offline unit suite passed on the tutorial source at
-the candidate revision, which is necessary but not sufficient. The registry status remains
-**Candidate** until a reviewer confirms a recorded run against the notebook blob under review and
-an integrator promotes it; promotion is not performed by the builder. Two facts a reviewer should
-weigh: `stage_missing_files` was exercised only with an injected downloader in the unit suite (the
-real `hf_hub_download` fetch of all three manifest entries into a fresh `weights/resnet50-a1/` has not been
-executed), and the standalone carrier itself — executing the carried module cell in a runtime that has no
-repository checkout — has been validated statically only (parity PASS), never run; the clean run will be the
-first execution of the standalone path, of the staging path, and of the CPU inference path against the real weights.
+**Candidate.** The review fixes (RN-M1..M5, RN-m1..m6, review PR #12; mechanism ported from the sibling
+`convnext-classification-pipeline` at `06482ea`) regenerated the notebook: no in-kernel install (the fleet's uv
+isolated environment), head-only fine-tuning by default with the backbone and its BatchNorm statistics frozen and
+the configuration exported, a held-out verdict computed from the counts with its interval on a 100-per-class
+pair-grouped split, a validated dataset intake that refuses a `test/` folder and train/val class mismatches before
+training, a working fallback, a reload equivalence check and the guided layer. Static validation, the generator
+`--check`, ruff and the offline unit suite pass on this source. A local Windows CPU check of every code cell with the
+real pinned weights (2026-10-09, not clean-runtime evidence) gave held-out 34/40 (Wilson 70.9 %–92.9 %,
+`above-baseline`) for head-only and 21/40 (`indistinguishable-from-baseline`) for the Section 12 full fine-tuning.
+A one-pass hosted run of the current notebook blob `75e7e1ee` is recorded above (2026-10-09, Colab CLI sequential
+execution on a fresh Tesla T4, default path, 14/14 cells, no restart, held-out 34/40, Wilson 70.9 %–92.9 %).
+Remaining gates: the BYOD release gate (step 7) on a hosted runtime and a reviewer's confirmation of the recorded
+run against the blob under review. The registry status remains **Candidate** until an integrator promotes it;
+promotion is not performed by the builder.
 
 ## Supplemental modern image classification workshop — `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb`
 

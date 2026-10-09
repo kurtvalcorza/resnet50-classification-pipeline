@@ -1,0 +1,107 @@
+[colab] Parsing notebook '/home/kurt/colab-runs/resnet50-classification-pipeline-72a6cda-8a5fd5/resnet50_classification_colab_72a6cda_colab-cli-t4.ipynb'...
+[colab] Executing cell 1/14 - Infrastructure: install the locked runtime into an isolated environment...
+{'isolated_environment': '/content/dimer_isolated_env', 'isolated_python': '3.12.12', 'kernel_python': '3.13.15', 'locked_packages': 45, 'setup_seconds': 50}
+[colab] Executing cell 2/14 - Infrastructure: route the remaining cells to the isolated environment...
+Every later code cell now runs in /content/dimer_isolated_env/bin/python (pid 2609).
+[colab] Executing cell 3/14 - Infrastructure: record the runtime...
+{'notebook_source': {'repository': 'resnet50-classification-pipeline', 'repository_revision': '3322040e1d16c1ab27babf31bb91fffa7f007a3a', 'embedded_module': 'src/resnet50_classification_pipeline/pipeline.py', 'embedded_modules': ['src/resnet50_classification_pipeline/pipeline.py'], 'module_sha256': '993f39271ae0e389e6eaa193f8cde21c201d820cdc147c21bf3dee31a895b16f', 'generator': 'build_notebook.py/2.1', 'notebook_spec': '2.2'}, 'python': '3.12.12', 'torch': '2.14.0+cu130', 'timm': '1.0.29', 'cuda': True}
+[colab] Executing cell 4/14 - Infrastructure: carried module `src/resnet50_classification_pipeline/pipeline.py` (you may run it without reading it)...
+[colab] Executing cell 5/14 - Infrastructure: pin, stage and verify the model (you may run it without reading it)...
+{'model_id': 'timm/resnet50.a1_in1k', 'revision': '767268603ca0cb0bfe326fa87277f19c419566ef', 'license': 'apache-2.0', 'files': 3, 'total_bytes': 102509031}
+{'weights_dir': '/content/weights/resnet50-a1', 'fetched': ['README.md', 'config.json', 'model.safetensors']}
+{'verified_files': 3, 'revision': '767268603ca0cb0bfe326fa87277f19c419566ef'}
+{'device': 'cuda:0', 'source': 'local-snapshot'}
+[colab] Executing cell 6/14 - resnet50_classification-13...
+{'sample_kind': 'synthetic', 'name': 'synthetic_gradient_256.png', 'mode': 'RGB', 'size': (256, 256), 'rgb_sha256': 'e38db00bd95756e739b8d2f6a69de029b011193c1e6a2a589aa546c4631adbdf', 'ground_truth_index': None}
+<isolated cell 4>:37: DeprecationWarning: 'mode' parameter is deprecated and will be removed in Pillow 13 (2026-10-15)
+  image = Image.fromarray(array, mode='RGB')
+[colab] Executing cell 7/14 - resnet50_classification-15...
+{'ceilings': {'NUM_CLASSES': 1000, 'MAX_IMAGE_SIDE': 4096, 'MAX_BATCH': 64}}
+{
+  "schema": {
+    "input": "PIL.Image.Image or a sequence of them; any mode, converted to RGB",
+    "image_side_px": [
+      1,
+      4096
+    ],
+    "batch": [
+      1,
+      64
+    ],
+    "top_k": [
+      1,
+      1000
+    ],
+    "preprocessing": "resize to 235 px, center-crop 224x224 (crop_pct 0.95, bicubic), ImageNet normalisation"
+  },
+  "inputs": [
+    {
+      "id": "synthetic_gradient_256.png",
+      "mode": "RGB",
+      "size": [
+        256,
+        256
+      ]
+    }
+  ],
+  "top_k": 5,
+  "verdict": "accepted",
+  "findings": [
+    {
+      "input": "oversized-probe",
+      "verdict": "rejected",
+      "message": "image side outside 1..MAX_IMAGE_SIDE=4096 px: (4097, 8)"
+    }
+  ],
+  "model_id": "timm/resnet50.a1_in1k",
+  "model_revision": "767268603ca0cb0bfe326fa87277f19c419566ef"
+}
+[colab] Executing cell 8/14 - resnet50_classification-17...
+{'decision_rule': 'argmax', 'predicted_index': 916, 'predicted_label': 'web site, website, internet site, site', 'device': 'cuda:0', 'source': 'local-snapshot'}
+ 1. index  916  score 0.0392  web site, website, internet site, site
+ 2. index  854  score 0.0382  theater curtain, theatre curtain
+ 3. index  644  score 0.0321  matchstick
+ 4. index  149  score 0.0221  dugong, Dugong dugon
+ 5. index  499  score 0.0209  cleaver, meat cleaver, chopper
+[colab] Executing cell 9/14 - resnet50_classification-19...
+{
+  "task": "imagenet-1k single-label classification",
+  "decision_rule": "argmax",
+  "sample_kind": "synthetic",
+  "n_predictions": 1,
+  "baselines": [],
+  "model_id": "timm/resnet50.a1_in1k",
+  "model_revision": "767268603ca0cb0bfe326fa87277f19c419566ef",
+  "metrics": [],
+  "verdict": "not-measurable",
+  "reason": "no ground-truth class index was supplied for the evaluated images",
+  "needs": "labelled photographs with ImageNet-1k class indices (0-999), e.g. a held-out sample of your own data, scored with top_k_accuracy against the majority-class baseline of that sample"
+}
+No ground-truth class index was supplied, so top_k_accuracy is not computed; the prediction above is sanity evidence only.
+[colab] Executing cell 10/14 - resnet50_classification-21...
+{'dataset': 'tutorial dataset', 'source': 'Cleanlab/cifar-10-subset @ bb5a7aab (MIT)', 'sha256': '66f90a4f87d865e8eb653b62f10e754684075a32314177de76832349d4b1fb19', 'layout': 'class folders, seeded pair-grouped split', 'image_size_px': [32, 32]}
+class                            train  held out
+frog                                80        20
+truck                               80        20
+{'train_images': 160, 'held_out_images': 40, 'held_out_sharing_a_file_name_with_train': 0, 'skipped_files': []}
+[colab] Executing cell 11/14 - resnet50_classification-23...
+{'method': 'head-only fine-tuning', 'trainable_parameters': 4098, 'frozen_parameters': 23508032, 'epochs': 1, 'batch_size': 4, 'learning_rate': 0.0001, 'weight_decay': 0.01, 'seed': 20260910}
+{'fine_tuning': 'complete', 'method': 'head-only fine-tuning', 'device': 'cuda:0', 'classes': ['frog', 'truck'], 'train_samples': 160, 'val_samples': 40}
+{'epoch': 1, 'train_loss': 0.6823, 'val_loss': 0.6285, 'val_accuracy': 0.85}
+[colab] Executing cell 12/14 - resnet50_classification-25...
+{'fresh_boundary_source': 'fine-tuned-artifact', 'images': 40, 'label_agreement': 40, 'max_score_difference': 0.0, 'tolerance': 0.0001, 'equivalent': True}
+Held-out images: 40 (tutorial dataset) - a tutorial metric, not a benchmark
+Accuracy:        34/40 = 85.0%   95% Wilson interval 70.9% to 92.9%
+Majority-class baseline: 50.0% (always answering 'frog')
+Verdict: sample-sanity; comparison to baseline: above-baseline
+  frog                            14/20 correct
+  truck                           20/20 correct
+{'misclassified': [{'id': 'CIFAR-10-subset/original_images/frog/image_42.png', 'true_label': 'frog', 'predicted_label': 'truck', 'score': 0.513999342918396}, {'id': 'CIFAR-10-subset/darkened_images/frog/image_42.png', 'true_label': 'frog', 'predicted_label': 'truck', 'score': 0.5224961042404175}, {'id': 'CIFAR-10-subset/original_images/frog/image_9.png', 'true_label': 'frog', 'predicted_label': 'truck', 'score': 0.5021129846572876}, {'id': 'CIFAR-10-subset/darkened_images/frog/image_9.png', 'true_label': 'frog', 'predicted_label': 'truck', 'score': 0.501523494720459}, {'id': 'CIFAR-10-subset/original_images/frog/image_65.png', 'true_label': 'frog', 'predicted_label': 'truck', 'score': 0.5102362036705017}, {'id': 'CIFAR-10-subset/darkened_images/frog/image_65.png', 'true_label': 'frog', 'predicted_label': 'truck', 'score': 0.503547191619873}]}
+[colab] Executing cell 13/14 - resnet50_classification-27...
+{'outputs': ['resnet50_classification_evaluation_report.json', 'resnet50_classification_finetuned', 'resnet50_classification_finetuned_evaluation_report.json', 'resnet50_classification_input_manifest.json', 'resnet50_classification_result.json', 'resnet50_classification_top_k.csv', 'resnet50_classification_validation_predictions.csv'], 'finetuned': ['model-config.json', 'model.safetensors']}
+['outputs/resnet50_classification_finetuned/model.safetensors', 'outputs/resnet50_classification_finetuned/model-config.json', 'outputs/resnet50_classification_validation_predictions.csv', 'outputs/resnet50_classification_finetuned_evaluation_report.json']
+[colab] Executing cell 14/14 - resnet50_classification-29...
+method | trainable_parameters | epochs | learning_rate | split_seed | final_val_loss | correct | n | wilson_95 | comparison_to_baseline
+head-only fine-tuning | 4098 | 1 | 0.0001 | 42 | 0.6285 | 34 | 40 | [0.709, 0.929] | above-baseline
+One run so far. Set TRAINABLE = 'all' in Section 9, select that cell and choose Runtime > Run after; this table then shows both runs.
+[colab] Saving notebook with outputs to '/home/kurt/colab-runs/resnet50-classification-pipeline-72a6cda-8a5fd5/resnet50_classification_colab_72a6cda_colab-cli-t4_output.ipynb'...
