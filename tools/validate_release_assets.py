@@ -24,6 +24,9 @@ PACKAGE = "resnet50_classification_pipeline"
 REPO_NAME = "resnet50-classification-pipeline"
 NOTEBOOK_NAME = "resnet50_classification_colab.ipynb"
 WORKSHOP_NOTEBOOK_NAME = "DIMER_Modern_Image_Classification_Workshop.ipynb"
+# The workshop declares its own NOTEBOOK_SPEC version and kind (KND1), separately from the E2E tutorial.
+WORKSHOP_NOTEBOOK_SPEC = "2.5"
+WORKSHOP_NOTEBOOK_KIND = "WORKSHOP"
 EXPECTED_PROFILE = "E2E"
 EXPECTED_MODEL_ID = "timm/resnet50.a1_in1k"
 PIPELINE_CLASS = "ResNet50ClassificationPipeline"
@@ -651,6 +654,43 @@ def _validate_notebook_content(
     _check(f"https://huggingface.co/{model_id}" in markdown, f"{path.name}: references must link {model_id}")
 
 
+def validate_workshop_declaration() -> None:
+    """The workshop's spec version, kind, profile and mode agree in metadata, opening cell and provenance export."""
+    path = ROOT / "tutorials" / WORKSHOP_NOTEBOOK_NAME
+    notebook = json.loads(_read(path))
+    dimer = notebook.get("metadata", {}).get("dimer")
+    _check(isinstance(dimer, dict), f"{path.name}: metadata.dimer block is required")
+    _check(
+        dimer.get("notebook_spec") == WORKSHOP_NOTEBOOK_SPEC,
+        f"{path.name}: metadata.dimer.notebook_spec must be '{WORKSHOP_NOTEBOOK_SPEC}'",
+    )
+    _check(
+        dimer.get("notebook_kind") == WORKSHOP_NOTEBOOK_KIND,
+        f"{path.name}: metadata.dimer.notebook_kind must be '{WORKSHOP_NOTEBOOK_KIND}' (KND1)",
+    )
+    _check(
+        dimer.get("notebook_profile") == EXPECTED_PROFILE,
+        f"{path.name}: metadata.dimer.notebook_profile must be '{EXPECTED_PROFILE}'",
+    )
+    _check(dimer.get("notebook_mode") == "WORKSHOP", f"{path.name}: metadata.dimer.notebook_mode must be 'WORKSHOP'")
+    cells = notebook.get("cells", [])
+    _check(bool(cells) and cells[0].get("cell_type") == "markdown", f"{path.name}: first cell must be markdown")
+    opening = _cell_source(cells[0])
+    _check(
+        f"**DIMER Notebook Specification:** `{WORKSHOP_NOTEBOOK_SPEC}`" in opening,
+        f"{path.name}: the opening cell must declare NOTEBOOK_SPEC {WORKSHOP_NOTEBOOK_SPEC}",
+    )
+    _check(
+        f"**Notebook kind:** `{WORKSHOP_NOTEBOOK_KIND}`" in opening,
+        f"{path.name}: the opening cell must declare the notebook kind",
+    )
+    code = "\n".join(_cell_source(cell) for cell in cells if cell.get("cell_type") == "code")
+    _check(
+        f'"notebook_spec":"{WORKSHOP_NOTEBOOK_SPEC}","notebook_kind":"{WORKSHOP_NOTEBOOK_KIND}"' in code,
+        f"{path.name}: provenance.json must record the same spec version and kind",
+    )
+
+
 def validate_notebooks() -> None:
     tutorials = ROOT / "tutorials"
     notebooks = sorted(tutorials.glob("*.ipynb"))
@@ -681,6 +721,7 @@ def validate_notebooks() -> None:
         "tutorials/README.md must name the notebook spec version",
     )
     _check("standalone" in registry.lower(), "tutorials/README.md must record that the notebook is standalone")
+    validate_workshop_declaration()
 
 
 def validate_all() -> list[str]:

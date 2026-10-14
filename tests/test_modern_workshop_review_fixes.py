@@ -671,9 +671,10 @@ def test_privacy_requirements_and_runtime_guidance_are_stated():
 
 
 def test_notebook_revision_is_recorded():
-    # 0.3.0 moved the notebook to the uv isolated environment; the 0.2.0 review fixes above still hold.
-    assert NB["metadata"]["dimer"]["workshop_revision"] == "0.3.0-candidate"
-    assert 'NOTEBOOK_REVISION = "0.3.0-candidate"' in CELLS["4f54b044"]
+    # 0.3.0 moved the notebook to the uv isolated environment and 0.4.0 fixed the MIC2 review findings; the
+    # 0.2.0 review fixes above still hold.
+    assert NB["metadata"]["dimer"]["workshop_revision"] == "0.4.0-candidate"
+    assert 'NOTEBOOK_REVISION = "0.4.0-candidate"' in CELLS["4f54b044"]
 
 
 def test_committed_notebook_is_clean():

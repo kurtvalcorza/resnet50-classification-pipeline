@@ -334,3 +334,40 @@ This closes the pending hosted Colab T4 re-run of revision 0.3.0. The following 
 - the learner-observation recommendation.
 
 **Status: Candidate.**
+
+### 2026-10-14 review fixes (MIC2) — revision 0.4.0-candidate
+
+Revision `0.4.0-candidate` fixes the 2026-10-12 Notebook Review Framework v1 findings on revision 0.3.0 (review of
+`da35b54`, blob `b8c151140103`): notebook blob `b8c151140103` → `9fde027676ac`. The workshop has no generator for these
+cells, so the edits were made by an anchor-asserting script; the setup cell still matches the lock
+(`tools/build_modern_workshop_runtime.py --check`).
+
+- **MIC2-M1 (owner decision A: disclose and reword).** Section 2 now has a per-checkpoint table of supervised label
+  sets and of which target species are classes in them. All six species are classes of ImageNet-12k, 21k and 22k
+  (WordNet IDs checked against `timm/data/_info` at pytorch-image-models `3dda92a3`). ImageNet-1k has house finch
+  exactly and a broader "junco, snowbird" class (n01534433), and none of the other four. ConvNeXt-Tiny (12k), ViT-B/16
+  (21k) and EVA-02 (22k) were supervised on label sets containing all six. The opening boundary, Sections 1, 5, 12
+  and 21 and the sample interpretation now say that a gap between the two groups is consistent with label-set
+  exposure confounding the comparison, not proof of it, and no longer credit the ranking to architecture, size or
+  resolution. `provenance.json` records each model's label sets.
+- **MIC2-m1.** Sections 8 and 21 state that one fixed probe recipe is used for all six backbones and is not tuned per
+  backbone, and what a pick at the 1,000-epoch cap means. Section 11 prints the selected epoch and a cap flag.
+- **MIC2-m2.** Sections 11 and 22 print the number of correct test photos and a 95% Wilson interval per probe
+  accuracy; the count is re-derived from the saved predictions and must equal the recorded accuracy. The Section 12
+  exercise asks which checkpoints the 48 photos can tell apart, and Section 15 says the curve is noisy.
+- **MIC2-m3 (DAT20).** A refused BYOD input (including an empty `BYOD_PATH`) prints one message naming the input and
+  the rule and how to recover, with no traceback, and removes earlier BYOD results under `byod/`. Undecodable images
+  and failed integrity checks still stop the cell.
+- **MIC2-m4.** The notebook declares NOTEBOOK_SPEC 2.5, `notebook_kind` `WORKSHOP` and `notebook_profile` `E2E`
+  (the old `profile` key is kept), and `tools/validate_release_assets.py` checks the declaration.
+
+Every change is a disclosure, a display or the BYOD refusal path. No default-path computation changed, so the metrics
+of the 2026-10-04 run are expected to be unchanged; that is inferred from the diff, not re-executed.
+
+**Verification (not clean-runtime evidence).** Lint, the release-asset validator, both generator checks and the
+unit tests pass on Windows CPU with CI's dependency set; new tests in `tests/test_modern_workshop_mic2_fixes.py`
+execute the notebook's own cells with stand-ins. The review's five acceptance checks fail on the old blob and pass on
+the new one. A hosted run of `0.4.0-candidate` has not been made; the BYOD refusal must also be seen in a hosted
+browser run (REL12).
+
+**Status: Candidate.**
