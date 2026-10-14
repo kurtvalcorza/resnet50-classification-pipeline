@@ -655,7 +655,8 @@ def _validate_notebook_content(
 
 
 def validate_workshop_declaration() -> None:
-    """The workshop's spec version, kind, profile and mode agree in metadata, opening cell and provenance export."""
+    """Metadata declares the expected spec, kind, profile and mode, and the opening cell and the provenance literal
+    declare the same four values (checked structurally: header fields and the literal's syntax tree)."""
     path = ROOT / "tutorials" / WORKSHOP_NOTEBOOK_NAME
     notebook = json.loads(_read(path))
     dimer = notebook.get("metadata", {}).get("dimer")
@@ -673,22 +674,57 @@ def validate_workshop_declaration() -> None:
         f"{path.name}: metadata.dimer.notebook_profile must be '{EXPECTED_PROFILE}'",
     )
     _check(dimer.get("notebook_mode") == "WORKSHOP", f"{path.name}: metadata.dimer.notebook_mode must be 'WORKSHOP'")
+    expected = {
+        "spec": dimer.get("notebook_spec"),
+        "kind": dimer.get("notebook_kind"),
+        "profile": dimer.get("notebook_profile"),
+        "mode": dimer.get("notebook_mode"),
+    }
     cells = notebook.get("cells", [])
     _check(bool(cells) and cells[0].get("cell_type") == "markdown", f"{path.name}: first cell must be markdown")
     opening = _cell_source(cells[0])
-    _check(
-        f"**DIMER Notebook Specification:** `{WORKSHOP_NOTEBOOK_SPEC}`" in opening,
-        f"{path.name}: the opening cell must declare NOTEBOOK_SPEC {WORKSHOP_NOTEBOOK_SPEC}",
-    )
-    _check(
-        f"**Notebook kind:** `{WORKSHOP_NOTEBOOK_KIND}`" in opening,
-        f"{path.name}: the opening cell must declare the notebook kind",
-    )
-    code = "\n".join(_cell_source(cell) for cell in cells if cell.get("cell_type") == "code")
-    _check(
-        f'"notebook_spec":"{WORKSHOP_NOTEBOOK_SPEC}","notebook_kind":"{WORKSHOP_NOTEBOOK_KIND}"' in code,
-        f"{path.name}: provenance.json must record the same spec version and kind",
-    )
+    labels = {
+        "spec": "DIMER Notebook Specification",
+        "kind": "Notebook kind",
+        "profile": "Notebook profile",
+        "mode": "Pedagogical mode",
+    }
+    for field, label in labels.items():
+        found = re.findall(rf"\*\*{re.escape(label)}:\*\*\s*`([^`]+)`", opening)
+        _check(
+            found == [expected[field]],
+            f"{path.name}: the opening cell must declare {label} `{expected[field]}` once, found {found}",
+        )
+    provenance = _workshop_provenance_constants(path, cells)
+    for field, key in (("spec", "notebook_spec"), ("kind", "notebook_kind"), ("profile", "notebook_profile"),
+                       ("mode", "pedagogical_mode")):
+        _check(
+            provenance.get(key) == expected[field],
+            f"{path.name}: provenance.json {key} {provenance.get(key)!r} != metadata {expected[field]!r}",
+        )
+
+
+def _workshop_provenance_constants(path: Path, cells: list[dict]) -> dict:
+    """Constant-valued top-level entries of the workshop's `provenance={...}` literal, read from its syntax tree."""
+    for cell in cells:
+        if cell.get("cell_type") != "code":
+            continue
+        try:
+            tree = ast.parse(_cell_source(cell))
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "provenance" for t in node.targets)
+                and isinstance(node.value, ast.Dict)
+            ):
+                return {
+                    k.value: v.value
+                    for k, v in zip(node.value.keys, node.value.values, strict=True)
+                    if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)
+                }
+    raise ValidationError(f"{path.name}: no provenance={{...}} literal found")
 
 
 def validate_notebooks() -> None:

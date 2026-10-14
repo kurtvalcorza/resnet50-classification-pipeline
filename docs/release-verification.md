@@ -371,3 +371,37 @@ the new one. A hosted run of `0.4.0-candidate` has not been made; the BYOD refus
 browser run (REL12).
 
 **Status: Candidate.**
+
+#### Peer-review follow-up (same revision, blob `9fde027676ac` → `037dcdebfe8b`)
+
+An independent peer review of the MIC2 fixes raised further points, which were addressed on the same branch:
+
+- **Interval-overlap rule removed.** Section 11 labels the per-model intervals as nominal binomial (Wilson)
+  intervals that assume independent photos. Because all six probes score the same photos, it adds a paired display:
+  for the probe with the most correct photos against each other probe, the photos only one of them got right and an
+  exact McNemar p-value, labelled illustrative and with a multiple-comparison note. Display only.
+- **Validation activity.** The reported minimum validation loss is called a validation-selection diagnostic: the
+  same validation photos chose the epoch.
+- **Observation audit.** In the pinned sample, all 180 photos come from 180 distinct iNaturalist observations and
+  180 distinct photo IDs, so no observation or photo crosses splits. A 64-bit difference-hash comparison of the 180
+  pinned photos (fetched and verified by size and SHA-256) found no pair within Hamming distance 10. The split cell now
+  stops if an observation spans two splits, and `provenance.json` records the count (0). The near-duplicate check was
+  run offline for the review and is not run by the notebook.
+- **Wording.** The notebook now says "same linear-probe recipe, with input width set by each backbone" and describes
+  results as transfer under this protocol. A cap pick is described as "the best observed validation loss occurred at
+  the final epoch; extending training might change the selection". The learning curve is described as one
+  nested-subset illustration, without attributing dips to noise. Resolution stress is described as synthetic
+  source-detail degradation, and its rows record the smallest and largest resulting longer side.
+- **Provenance.** `provenance.json` records each model's resolved `timm` preprocessing config and feature interface.
+- **BYOD refusal.** Nothing is deleted any more. A refusal is recorded in `byod_attempts/<time>-refused/status.json`.
+  Earlier results are moved out of `byod/` into `byod_attempts/`, so `byod/` holds no results that could be read as
+  current.
+- **Validator.** `validate_workshop_declaration()` now checks spec, kind, profile and mode structurally. It reads them
+  from the metadata, from the opening cell's header fields and from the provenance literal's syntax tree.
+- **Glossary.** New entries cover the three splits, epoch selection, standardisation and softmax scores.
+
+The data-efficiency subset order is unchanged, because changing it would change the curve's numbers. A seeded random
+order within each class is a follow-up. No default-path computed number changed. This is inferred from the diff and
+was not re-executed.
+
+**Status: Candidate.**

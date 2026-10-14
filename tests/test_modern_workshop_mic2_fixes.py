@@ -103,7 +103,48 @@ def test_fixed_recipe_and_cap_are_explained():
     assert "It is not tuned per backbone." in CELLS["8b54b6df"]
     assert "1,000-epoch cap" in CELLS["8b54b6df"]
     assert "One fixed probe recipe, not tuned per backbone" in CELLS["c34ab144"]
-    assert "Expect this curve to be noisy." in CELLS["4f4233dc"]
+    assert "one nested-subset illustration" in CELLS["4f4233dc"]
+    # Peer-review follow-up: diagnostic wording only, no causal claims about the cap or the curve.
+    for stale in ("still improving", "still falling", "barely trained", "real probe", "sampling noise",
+                  "cannot separate", "Overlapping intervals", "identical six-class linear probe",
+                  "exact same"):
+        assert all(stale not in CELLS[c["id"]] for c in NB["cells"] if c["id"] != "uv-install"), stale
+    assert "extending training might change the selection" in CELLS["8b54b6df"]
+    assert "validation-selection diagnostic" in CELLS["guided-01"]
+    assert "Validation-selection diagnostic" in CELLS["activity-validation"]
+    assert "synthetic source-detail degradation" in CELLS["fb5d8f70"]
+    assert '"preprocessing":ALL_RESULTS[key]["preprocessing"]' in CELLS["22e6f1e2"]
+    assert "**Softmax score**" in CELLS["guided-05"] and "**Epoch selection**" in CELLS["guided-05"]
+
+
+@pytest.mark.parametrize(("b", "c", "expected"), [(0, 0, 1.0), (5, 0, 0.0625), (3, 3, 1.0), (10, 2, 0.0386)])
+def test_exact_mcnemar_matches_the_binomial_closed_form(b, c, expected):
+    helpers = definitions("7aaa53fc", {"np": np, "math": __import__("math")})
+    assert helpers["exact_mcnemar_p"](b, c) == pytest.approx(expected, abs=1e-4)
+
+
+def test_paired_table_counts_discordant_photos_against_the_top_probe(capsys):
+    run("7aaa53fc", fake_results())
+    out = capsys.readouterr().out
+    # eva02 (43 right) is top. resnet50 is right on photos 0-23 and eva02 on 0-42: 19 only-top, 0 only-other.
+    row = next(line for line in out.splitlines() if line.startswith("resnet50") and "0.0000" in line)
+    assert row.split()[1:3] == ["19", "0"]
+    assert "Bonferroni" in out and "illustrative" in out
+    assert "cannot separate" not in out
+
+
+def test_observations_crossing_splits_stop_the_split_cell(ns):
+    rows = [(f"r{i}", ns["CLASS_KEYS"][i % 6], i, i // 2, "o", 1, "x", "jpg") for i in range(180)]
+    records = [{"source_id": rid, "label": lab, "label_id": ns["CLASS_TO_ID"][lab], "photo_id": pid,
+                "observation_id": oid, "observer": obs, "bytes": b, "sha256": d, "pixel_sha256": str(pid)}
+               for rid, lab, pid, oid, obs, b, d, _ext in rows]
+    ns["records"] = records
+    with pytest.raises(RuntimeError, match="observations have photos in more than one split"):
+        run("1b442017", ns)
+    for i, r in enumerate(records):
+        r["observation_id"] = i
+    run("1b442017", ns)
+    assert ns["OBSERVATIONS_CROSSING_SPLITS"] == 0
 
 
 def test_wilson_interval_matches_the_closed_form():
@@ -200,7 +241,12 @@ def test_a_refused_byod_input_prints_one_message_and_clears_stale_outputs(
     out = capsys.readouterr().out
     assert out.count("BYOD refused") == 1 and expected in out
     assert "run this cell again" in out
-    assert not stale.exists()
+    assert not stale.exists()  # nothing is left where it could be read as this attempt's result
+    attempts = ns["OUT_ROOT"] / "byod_attempts"
+    status = json.loads(next(attempts.glob("*-refused/status.json")).read_text(encoding="utf-8"))
+    assert status["status"] == "refused" and expected in status["reason"]
+    kept = next(attempts.glob("*-superseded-byod")) / "summary.csv"
+    assert kept.read_text(encoding="utf-8") == "from an earlier upload\n"  # earlier results are not deleted
     assert ns["byod_splits"] is None and ns["byod_summary"] == []
 
 
@@ -236,4 +282,25 @@ def test_validator_rejects_a_stale_workshop_declaration(monkeypatch):
     stale = NOTEBOOK.read_text(encoding="utf-8").replace('"notebook_spec": "2.5"', '"notebook_spec": "2.1"')
     monkeypatch.setattr(module, "_read", lambda path: stale)
     with pytest.raises(module.ValidationError, match="notebook_spec"):
+        module.validate_workshop_declaration()
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("**Pedagogical mode:** `WORKSHOP`", "**Pedagogical mode:** `GUIDED`", "Pedagogical mode"),
+        ("**Notebook profile:** `E2E`", "**Notebook profile:** `SMOKE`", "Notebook profile"),
+        ('\\"pedagogical_mode\\":\\"WORKSHOP\\"', '\\"pedagogical_mode\\":\\"GUIDED\\"', "pedagogical_mode"),
+        ('\\"notebook_profile\\":\\"E2E\\"', '\\"notebook_profile\\":\\"SMOKE\\"', "notebook_profile"),
+    ],
+)
+def test_validator_checks_every_field_in_the_opening_cell_and_provenance(monkeypatch, old, new, message):
+    path = ROOT / "tools" / "validate_release_assets.py"
+    spec = importlib.util.spec_from_file_location("validate_release_assets", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    text = NOTEBOOK.read_text(encoding="utf-8")
+    assert text.count(old) == 1, old
+    monkeypatch.setattr(module, "_read", lambda path: text.replace(old, new))
+    with pytest.raises(module.ValidationError, match=message):
         module.validate_workshop_declaration()
