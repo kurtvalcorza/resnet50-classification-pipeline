@@ -24,6 +24,9 @@ PACKAGE = "resnet50_classification_pipeline"
 REPO_NAME = "resnet50-classification-pipeline"
 NOTEBOOK_NAME = "resnet50_classification_colab.ipynb"
 WORKSHOP_NOTEBOOK_NAME = "DIMER_Modern_Image_Classification_Workshop.ipynb"
+# The workshop declares its own NOTEBOOK_SPEC version and kind (KND1), separately from the E2E tutorial.
+WORKSHOP_NOTEBOOK_SPEC = "2.5"
+WORKSHOP_NOTEBOOK_KIND = "WORKSHOP"
 EXPECTED_PROFILE = "E2E"
 EXPECTED_MODEL_ID = "timm/resnet50.a1_in1k"
 PIPELINE_CLASS = "ResNet50ClassificationPipeline"
@@ -651,6 +654,79 @@ def _validate_notebook_content(
     _check(f"https://huggingface.co/{model_id}" in markdown, f"{path.name}: references must link {model_id}")
 
 
+def validate_workshop_declaration() -> None:
+    """Metadata declares the expected spec, kind, profile and mode, and the opening cell and the provenance literal
+    declare the same four values (checked structurally: header fields and the literal's syntax tree)."""
+    path = ROOT / "tutorials" / WORKSHOP_NOTEBOOK_NAME
+    notebook = json.loads(_read(path))
+    dimer = notebook.get("metadata", {}).get("dimer")
+    _check(isinstance(dimer, dict), f"{path.name}: metadata.dimer block is required")
+    _check(
+        dimer.get("notebook_spec") == WORKSHOP_NOTEBOOK_SPEC,
+        f"{path.name}: metadata.dimer.notebook_spec must be '{WORKSHOP_NOTEBOOK_SPEC}'",
+    )
+    _check(
+        dimer.get("notebook_kind") == WORKSHOP_NOTEBOOK_KIND,
+        f"{path.name}: metadata.dimer.notebook_kind must be '{WORKSHOP_NOTEBOOK_KIND}' (KND1)",
+    )
+    _check(
+        dimer.get("notebook_profile") == EXPECTED_PROFILE,
+        f"{path.name}: metadata.dimer.notebook_profile must be '{EXPECTED_PROFILE}'",
+    )
+    _check(dimer.get("notebook_mode") == "WORKSHOP", f"{path.name}: metadata.dimer.notebook_mode must be 'WORKSHOP'")
+    expected = {
+        "spec": dimer.get("notebook_spec"),
+        "kind": dimer.get("notebook_kind"),
+        "profile": dimer.get("notebook_profile"),
+        "mode": dimer.get("notebook_mode"),
+    }
+    cells = notebook.get("cells", [])
+    _check(bool(cells) and cells[0].get("cell_type") == "markdown", f"{path.name}: first cell must be markdown")
+    opening = _cell_source(cells[0])
+    labels = {
+        "spec": "DIMER Notebook Specification",
+        "kind": "Notebook kind",
+        "profile": "Notebook profile",
+        "mode": "Pedagogical mode",
+    }
+    for field, label in labels.items():
+        found = re.findall(rf"\*\*{re.escape(label)}:\*\*\s*`([^`]+)`", opening)
+        _check(
+            found == [expected[field]],
+            f"{path.name}: the opening cell must declare {label} `{expected[field]}` once, found {found}",
+        )
+    provenance = _workshop_provenance_constants(path, cells)
+    for field, key in (("spec", "notebook_spec"), ("kind", "notebook_kind"), ("profile", "notebook_profile"),
+                       ("mode", "pedagogical_mode")):
+        _check(
+            provenance.get(key) == expected[field],
+            f"{path.name}: provenance.json {key} {provenance.get(key)!r} != metadata {expected[field]!r}",
+        )
+
+
+def _workshop_provenance_constants(path: Path, cells: list[dict]) -> dict:
+    """Constant-valued top-level entries of the workshop's `provenance={...}` literal, read from its syntax tree."""
+    for cell in cells:
+        if cell.get("cell_type") != "code":
+            continue
+        try:
+            tree = ast.parse(_cell_source(cell))
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "provenance" for t in node.targets)
+                and isinstance(node.value, ast.Dict)
+            ):
+                return {
+                    k.value: v.value
+                    for k, v in zip(node.value.keys, node.value.values, strict=True)
+                    if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)
+                }
+    raise ValidationError(f"{path.name}: no provenance={{...}} literal found")
+
+
 def validate_notebooks() -> None:
     tutorials = ROOT / "tutorials"
     notebooks = sorted(tutorials.glob("*.ipynb"))
@@ -681,6 +757,7 @@ def validate_notebooks() -> None:
         "tutorials/README.md must name the notebook spec version",
     )
     _check("standalone" in registry.lower(), "tutorials/README.md must record that the notebook is standalone")
+    validate_workshop_declaration()
 
 
 def validate_all() -> list[str]:
