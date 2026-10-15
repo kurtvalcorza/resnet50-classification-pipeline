@@ -126,6 +126,7 @@ they are measurements for the stated runtime, not general estimates.
 | 2026-09-14 | `b7e787d` / `77dc7ebd3d7b` | Kaggle Tesla T4 (`kurtvalcorza/dimer-nb2-resnet50-classification` v1) | Default sample path of the previous notebook version (in-kernel install, 16 images per class) | 182.3 s | **Restart status not recorded; not promotion evidence.** Recorded at the time as "10/10 ok code cells executed cleanly, 8 files, 103 MB staged"; no executed notebook and no fine-tuning numbers were archived, and the kernel could not be re-opened for review (permission denied). That blob pip-installed into the live kernel behind a restart-on-stale-import guard, so whether a restart occurred is unknown. Superseded by the review fixes (isolated environment, no restart); the current blob has no hosted run yet. |
 | 2026-10-04 | `26eb545` / `b8c151140103` | Google Colab (browser, maintainer-run), Tesla T4 | `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb` revision 0.3.0-candidate, default `Run all` (toggles at defaults) | not recorded (setup 65 s) | **PASSED** — 23/23 code cells, counts 1–23, 0 errors; metrics equal the 2026-09-28 run ([record](#maintainer-supplied-colab-execution-of-revision-030--2026-10-04)) |
 | 2026-10-09 | `72a6cda` / `75e7e1ee065d` | Colab CLI 0.7.4 sequential execution, fresh Colab Tesla T4 (session `suite-resnet50-72a6cda-8a5f`) | Default path only (`TRAINABLE = 'head'`; inference, head-only fine-tuning, reload, held-out evaluation) | 86.5 s | **One pass, no restart, 0 errors**, 14/14 code cells. Held-out **34/40 = 85.0 %, 95 % Wilson 70.9 %–92.9 %**, above the 50 % majority baseline (verdict `sample-sanity`, `above-baseline`). See the record below. |
+| 2026-10-15 | `4112eb3` / `037dcdebfe8b` | Colab CLI 0.7.4 sequential execution, fresh Colab Tesla T4 (session `suite-resnet50-4112eb3-3dce`) | `tutorials/DIMER_Modern_Image_Classification_Workshop.ipynb` revision 0.4.0-candidate, default path (toggles at defaults) | 462.7 s (session) | **PASSED** — 23/23 code cells in order, 0 errors; every computed metric equals the 2026-10-04 run; 0 observations cross splits ([record](#colab-cli-execution-of-revision-040--2026-10-15)) |
 
 ### 2026-10-09 — Colab CLI one-pass run of `72a6cda` (fresh Colab Tesla T4)
 
@@ -403,5 +404,49 @@ An independent peer review of the MIC2 fixes raised further points, which were a
 The data-efficiency subset order is unchanged, because changing it would change the curve's numbers. A seeded random
 order within each class is a follow-up. No default-path computed number changed. This is inferred from the diff and
 was not re-executed.
+
+**Status: Candidate.**
+
+### Colab CLI execution of revision 0.4.0 — 2026-10-15
+
+The PR head was run on a fresh Colab VM with the Colab CLI. The executed copy is preserved byte-for-byte as
+[evidence](execution-evidence/2026-10-15/DIMER_Modern_Image_Classification_Workshop_4112eb3_colab-cli-t4.ipynb).
+
+- **Executed-file SHA-256:** `d9a0cda8fc13098a1cdf9f6a12fe4a91a689af6baf227feb181da4509977ac58` (the committed copy
+  has the same digest).
+- **Source:** PR head `4112eb303c40af7b428ada536efd3e0da60e82dd`, notebook blob
+  `037dcdebfe8b23b1d9005e0243682ae3c22235a7` (checked against the fetched bytes before the VM was allocated). All 54
+  cell ids, types and sources match the committed notebook; no `# @param` value was changed.
+- **Executor:** Colab CLI 0.7.4 sequential execution (`colab exec -f`), fresh Colab VM, Tesla T4 (`cuda:0`,
+  15,637,086,208 bytes), session `suite-resnet50-4112eb3-3dce`, released after the run. This is **not** a browser
+  `Run all`: the CLI sets no execution counts, so order is taken from the executor log (cells 1–23 in sequence).
+- **Runtime:** kernel Python 3.13.15. The uv setup cell built `/content/dimer_isolated_env` (CPython 3.12.12, 53
+  locked packages) in 47 s, with no restart; torch 2.14.0+cu130, timm 1.0.29, NumPy 2.5.3. Session wall time 462.7 s.
+- **Execution:** 23/23 code cells ran in order with no error outputs (one definition-only cell has no output); 9
+  figures rendered and the completion summary is present.
+- **Configuration:** default path. Resolution stress, the validation-only activity and BYOD stayed off, and each
+  cell says it was skipped.
+- **Observation audit:** the split cell printed `{'observations': 180, 'observations_crossing_splits': 0}`.
+- **Results:** split 108 / 24 / 48, split digest `842433b7…`, 31 of 117 observers in more than one split, majority
+  floor 0.167, consensus 14 unanimous-correct / 19 majority-correct / 8 split / 7 shared hard cases. Probe accuracy
+  ResNet-50 0.500 (24/48), MobileNetV4-Conv-Small 0.500 (24/48), ConvNeXt-Tiny 0.729 (35/48), ViT-B/16 0.792 (38/48),
+  SwinV2-Tiny 0.667 (32/48), EVA-02 Base 448 0.896 (43/48); selected epochs 35 / 46 / 1000 / 1000 / 34 / 1000. The
+  paired table (EVA-02 against each other probe, only-EVA-right / only-other-right) prints 19/0, 21/2, 9/1, 6/1 and
+  14/3, consistent with the correct counts.
+- **Comparison with the 2026-10-04 browser run of revision 0.3.0 (blob `b8c151140103`):** a line diff of the text
+  outputs leaves only expected differences: the uv setup time (65 s → 47 s) and worker pid, the revision string
+  (0.3.0 → 0.4.0), backbone latencies (run-to-run timing), and the outputs this revision adds (the observation audit,
+  the Wilson-interval and epoch-cap table, the paired McNemar table, the pretraining-label fields in the resource
+  rows and the final summary's interval lines). Every 5-NN accuracy, probe accuracy, macro-F1 and selected epoch, and
+  the consensus counts, are identical to the printed precision, which confirms the earlier inference that no
+  default-path computed number changed.
+- **Evidence boundary:** CLI sequential execution of the default path, not a browser `Run all`. Forms and uploads
+  were not exercised; the BYOD accept and refuse paths, resolution stress and the validation activity were not run.
+
+This closes the pending hosted re-run of revision 0.4.0 on the default path. The following remain open:
+
+- a hosted browser BYOD run (accept and refuse, REL12);
+- the resolution-stress and validation-activity paths on a hosted runtime;
+- the learner-observation recommendation.
 
 **Status: Candidate.**
