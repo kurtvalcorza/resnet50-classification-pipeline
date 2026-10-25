@@ -168,7 +168,9 @@ they are measurements for the stated runtime, not general estimates.
 
 ## Current status
 
-**Candidate.** The review fixes (RN-M1..M5, RN-m1..m6, review PR #12; mechanism ported from the sibling
+**Current status (2026-10-25): Candidate, hosted runs pending (REL14).** The current notebook `tutorials/resnet50_classification_colab.ipynb` is blob `1c89a8be310ce7101f2eb0a15a61bb3a01b4ad67`, regenerated from generator commit `8acff6e` for the tier C review findings of row 75. No hosted run of this blob exists yet; every run recorded below is evidence for an earlier blob only. Changes: T75-1 (REL14/REL13) replaces "no run of this version is recorded yet" with the Colab T4 run of blob `75e7e1ee` (`72a6cda`, 2026-10-09: 86.5 s, 34/40) and names it in the worked answers, keeping the local CPU check as the labelled source for the optional full fine-tune and split-seed figures; T75-2 (DAT9) states that frog and truck are ImageNet-1k classes of the frozen backbone (timm synsets) and that image-level overlap of the CIFAR-10 images was not checked; T75-3 states that the 40 held-out images are also the per-epoch validation set; T75-4 declares Notebook Specification 2.5 with `notebook_kind: TUTORIAL`, a use notice, IEEE references and the documented `DIMER_ISOLATED_ENV`. Local checks (generator `--check`, `tools/validate_release_assets.py`, ruff, pytest against the `main` baseline) are source checks, not clean-runtime evidence.
+
+**Previous blob — Candidate.** The review fixes (RN-M1..M5, RN-m1..m6, review PR #12; mechanism ported from the sibling
 `convnext-classification-pipeline` at `06482ea`) regenerated the notebook: no in-kernel install (the fleet's uv
 isolated environment), head-only fine-tuning by default with the backbone and its BatchNorm statistics frozen and
 the configuration exported, a held-out verdict computed from the counts with its interval on a 100-per-class
