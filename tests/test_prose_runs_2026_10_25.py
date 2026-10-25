@@ -1,6 +1,7 @@
 """Prose numbers name the run they came from (Kurt, 2026-10-25: point to output + ranges).
 
-The SPLIT_SEED 0/1/2 scores were dropped from the prose (Kurt, 2026-10-26); the local CPU split-seed check is cited by commit 72a6cda; the
+The SPLIT_SEED 0/1/2 scores were dropped from the prose (Kurt, 2026-10-26); the local CPU split-seed check
+is cited by commit 72a6cda; the
 hosted Colab T4 runs (`75e7e1ee` 2026-10-09, `1c89a8be` 2026-10-25) ran the default split only.
 """
 import json

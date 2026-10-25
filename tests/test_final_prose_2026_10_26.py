@@ -1,6 +1,7 @@
 """Final prose pass (Kurt's ruling, 2026-10-26): the flagged expectation sentences are removed or
 rewritten as records of named runs.
-resnet50 (Kurt's ruling): the SPLIT_SEED 0/1/2 scores are dropped; the split-seed check is cited by commit 72a6cda.
+resnet50 (Kurt's ruling): the SPLIT_SEED 0/1/2 scores are dropped;
+the split-seed check is cited by commit 72a6cda.
 Fails on PR head e7ad649.
 """
 import json
