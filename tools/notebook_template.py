@@ -364,7 +364,7 @@ TEMPLATE = {
         "Windows CPU check (2026-10-09, files pre-staged; 4.8 s of it the head-only fine-tuning on 160 images), and the "
         "optional full fine-tuning of Section 12 took 31 s there. "
         "Building the isolated environment (PyTorch with its CUDA libraries) and downloading the 103 MB checkpoint come on "
-        "top of these: in the hosted Colab T4 run of blob `75e7e1ee` (commit `72a6cda`, 9 October 2026) the whole default path, isolated install and model download included, took 86.5 s (environment setup 50 s)."
+        "top of these: in the hosted Colab T4 runs the whole default path, isolated install and model download included, took 86.5 s (blob `75e7e1ee`, commit `72a6cda`, 9 October 2026; environment setup 50 s), 83.7 s (`1c89a8be`, commit `e5f1e56`, 25 October 2026; setup 47 s) and 89.9 s (`8cb6ad08`, commit `3a1afba`, 25 October 2026; setup 52 s); your run may take a different time."
     ),
     "byod": (
         "Two optional branches, both off by default and never part of the default path. `USE_BYOD = True` in Section 4 "
@@ -459,7 +459,7 @@ TEMPLATE = {
     ),
     "prerequisites": [
         "- **Learner:** basic Python and Colab or Jupyter familiarity; what an image classifier does. The notebook explains the softmax over class logits (and why it is not a calibrated probability), fine-tuning (full vs head-only), AdamW, cross-entropy, a held-out split, the majority-class baseline and a confidence interval where they are first used; the Glossary repeats them.",
-        "- **Runtime:** a fresh **Linux x86_64** runtime — Google Colab, Kaggle or Linux Jupyter. Section 1 builds its own Python 3.12.12 environment from a hash-locked list of manylinux wheels, so the kernel's own Python version does not matter, and a Windows or macOS kernel is not supported (Section 1 stops with that message). The default path runs on CPU and uses CUDA automatically when available; inference and training are float32. The locked install (PyTorch 2.14.0 with its CUDA libraries) is the largest download. Time: the previous notebook version passed on a Kaggle Tesla T4 in 182.3 s including its in-kernel install (2026-09-14); this version's cells took 17.5 s in a local Windows CPU check with the files pre-staged (2026-10-09); the isolated install and the downloads (103 MB checkpoint) add a few minutes (an estimate).",
+        "- **Runtime:** a fresh **Linux x86_64** runtime — Google Colab, Kaggle or Linux Jupyter. Section 1 builds its own Python 3.12.12 environment from a hash-locked list of manylinux wheels, so the kernel's own Python version does not matter, and a Windows or macOS kernel is not supported (Section 1 stops with that message). The default path runs on CPU and uses CUDA automatically when available; inference and training are float32. The locked install (PyTorch 2.14.0 with its CUDA libraries) is the largest download. Time: the previous notebook version passed on a Kaggle Tesla T4 in 182.3 s including its in-kernel install (2026-09-14); this version's cells took 17.5 s in a local Windows CPU check with the files pre-staged (2026-10-09); the isolated install and the downloads (103 MB checkpoint) come on top: the hosted Colab T4 runs took 83.7–89.9 s in all, setup included (see the header).",
         "- **Data (default path):** the inference sample is a deterministic 256×256 RGB gradient generated in code (no ground truth). The fine-tuning sections download one dataset: [`Cleanlab/cifar-10-subset`](https://huggingface.co/datasets/Cleanlab/cifar-10-subset) at commit `bb5a7aab` (MIT licence), a 986,707-byte `.zip` from `huggingface.co`, refused unless its SHA-256 is `66f90a4f…`. It holds 400 CIFAR-10 images of 32×32 px (upscaled to 224 px by the model's preprocessing) in two classes, `frog` and `truck`, each stored twice: an original and a darkened copy. The notebook keeps 100 per class — 50 photos, each with both copies — and holds out 20 per class (10 photos), always keeping a photo's two copies on the same side of the split. If the download fails, Section 8 falls back to a synthetic two-class stripes dataset and says so.",
         "- **BYOD image (Section 4):** one image file decodable by Pillow (PNG, JPEG, WebP, BMP and similar), any colour mode, longest side at most 4096 px; optionally its ImageNet-1k class index (0–999).",
         "- **BYOD dataset (Section 8):** one `.zip` of at most 200 MB and 2,000 images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`; longest side at most 4096 px) in **either** `<class>/<image>` folders (split here: per class, seeded, 20 % held out, at least 2 images per class) **or** `train/<class>/…` plus `val/<class>/…` (also `valid/`, `validation/`) used as given. A `test/` folder is refused (it would otherwise be pooled into training; keep your test set for a final check outside this notebook, or rename it to `val/`). At least 2 and at most 100 classes; every image must be inside a class folder; every validation class must also exist in `train/` and every training class in `val/`; other files are skipped and listed. Section 8 checks all of this and decodes every image before any training, and names the file or class it refuses. Validation is structural, not semantic: nothing checks that an image shows its folder's class.",
@@ -521,8 +521,8 @@ TEMPLATE = {
         {
             "md": (
                 "**What to notice:** a low top-1 score spread across unrelated classes.\n\n"
-                "<details><summary>Check your reasoning</summary>Low and unrelated. In the hosted Colab T4 run of blob `75e7e1ee` (commit `72a6cda`, 9 October 2026), as in a local Windows CPU "
-                "check the same day, the top-1 was `web site, website, internet site, site` with score 0.0392, "
+                "<details><summary>Check your reasoning</summary>Low and unrelated. In the hosted Colab T4 runs of blobs `75e7e1ee` (commit `72a6cda`, 9 October 2026), `1c89a8be` (commit `e5f1e56`) and `8cb6ad08` (commit `3a1afba`, both 25 October 2026), which printed the same numbers, as in a local Windows CPU "
+                "check on 9 October 2026, the top-1 was `web site, website, internet site, site` with score 0.0392, "
                 "followed by `theater curtain` (0.0382), `matchstick`, `dugong` and `cleaver`, all between 0.02 and 0.04. A "
                 "softmax always sums to 1 over the 1000 classes, so the model must name *something* even when nothing "
                 "matches; a low, flat top-5 is how that looks. It is not a probability that the image shows a web site. "
@@ -623,8 +623,8 @@ TEMPLATE = {
                 "2 biases) and `frozen_parameters` 23,508,032 (the whole pretrained backbone), then one history row with "
                 "the training loss, the validation loss and the validation accuracy.\n\n"
                 "<details><summary>Check your reasoning</summary>Yes, in the recorded runs — but the losses show the head "
-                "has only just started to learn. In the hosted Colab T4 run of blob `75e7e1ee` (commit `72a6cda`, 9 October 2026) (a local Windows CPU check the "
-                "same day agreed) one epoch gave training loss 0.68, validation loss 0.63 (an untrained two-class "
+                "has only just started to learn. In the hosted Colab T4 runs of blobs `75e7e1ee` (commit `72a6cda`, 9 October 2026), `1c89a8be` (commit `e5f1e56`) and `8cb6ad08` (commit `3a1afba`, both 25 October 2026), which printed the same numbers (a local Windows CPU check on "
+                "9 October 2026 agreed) one epoch gave training loss 0.68, validation loss 0.63 (an untrained two-class "
                 "head scores about 0.69) and validation accuracy 34/40. The frozen backbone already describes images well "
                 "(it was trained on ImageNet-1k, whose labels already include frogs and trucks; see DAT9 in Section 8), so a linear head on its features only has to learn which direction "
                 "separates frogs from trucks — 4,098 numbers. One epoch at learning rate 1e-4 moves a fresh head only a "
@@ -658,7 +658,7 @@ TEMPLATE = {
                 "baseline and the comparison word, not just the accuracy, and which images were misclassified.\n\n"
                 "<details><summary>Check your reasoning</summary>26/40 = 65 % has a 95 % Wilson interval of about 49.5 % to "
                 "78 %: its lower end sits just under the baseline, so `indistinguishable-from-baseline`. 30/40 = 75 % gives "
-                "about 60 % to 86 %: `above-baseline`. In the hosted Colab T4 run of blob `75e7e1ee` (commit `72a6cda`, 9 October 2026) the default run scored 34/40 "
+                "about 60 % to 86 %: `above-baseline`. In the hosted Colab T4 runs of blobs `75e7e1ee` (commit `72a6cda`, 9 October 2026), `1c89a8be` (commit `e5f1e56`) and `8cb6ad08` (commit `3a1afba`, both 25 October 2026), which printed the same numbers, the default run scored 34/40 "
                 "(interval about 71 % to 93 %, `above-baseline`; all 20 trucks right, 6 frogs called trucks — 3 photos, "
                 "each in both copies, with scores just above 0.5) and the reload matched exactly (difference 0.0). With "
                 "`SPLIT_SEED` 0, 1 and 2 the local Windows CPU check (not a hosted run; the hosted runs used the default split only) scored 34/40, 37/40 and 32/40, each `above-baseline`. "
@@ -694,7 +694,7 @@ TEMPLATE = {
                 "validation loss, the held-out count with its interval and the comparison to the baseline.\n"
                 "5. **Explain:** why can training more parameters give a *worse* model here, and does the held-out set have "
                 "enough images to tell the two methods apart?\n\n"
-                "<details><summary>Check your reasoning</summary>Worse, in the local Windows CPU check of 2026-10-09 (not a hosted run; the hosted Colab T4 run of blob `75e7e1ee` (commit `72a6cda`, 9 October 2026) covered the default path only): "
+                "<details><summary>Check your reasoning</summary>Worse, in the local Windows CPU check of 2026-10-09 (not a hosted run; the hosted Colab T4 runs covered the default path only): "
                 "one epoch of full fine-tuning ended with validation loss 0.68 (head-only: 0.63) and the held-out count "
                 "fell from 34/40 to **21/40 — no better than always answering one class** (frog 5/20, truck 16/20; "
                 "interval about 38 % to 67 %, `indistinguishable-from-baseline`). With all 23.5 M parameters free, 40 "
@@ -722,7 +722,7 @@ TEMPLATE = {
         "upscaled), each with its darkened copy — from one seeded, pair-grouped split and one training run. Read it "
         "together with its 95 % interval and the 50 % majority-class baseline printed in Section 10, remembering that "
         "the interval treats the 40 correlated images as independent and is therefore too narrow. Different split "
-        "seeds or devices move the count: the hosted Colab T4 run of blob `75e7e1ee` (commit `72a6cda`, 9 October 2026) scored 34/40 at the default seed, and a local CPU check (2026-10-09, not "
+        "seeds or devices move the count: the hosted Colab T4 runs of blobs `75e7e1ee` (commit `72a6cda`, 9 October 2026), `1c89a8be` (commit `e5f1e56`) and `8cb6ad08` (commit `3a1afba`, both 25 October 2026), which printed the same numbers, scored 34/40 at the default seed, and a local CPU check (2026-10-09, not "
         "hosted) scored 34/40, 37/40 and 32/40 at split seeds 0, 1 and 2 (head-only), while full fine-tuning (Section 12) fell to 21/40, "
         "no better than the baseline. It shows that the fine-tuning, export and reload path runs "
         "and produces a working two-class classifier on this sample; it does **not** show how well fine-tuning works on "
