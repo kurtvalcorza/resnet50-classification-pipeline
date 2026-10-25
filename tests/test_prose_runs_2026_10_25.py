@@ -25,10 +25,12 @@ def test_split_seed_scores_are_credited_to_the_cpu_check_everywhere():
 
 
 def test_historical_wording_records_every_hosted_run():
-    # Historical wording (2026-10-26): every quoted hosted-run number names all three Colab T4 runs, timings are
-    # records, and the unsupported "add a few minutes" estimate is gone. Fails on PR #15 head 0ad859d.
+    # Historical wording (2026-10-26): every quoted hosted-run number names all three Colab T4 runs,
+    # timings are records, and the unsupported "add a few minutes" estimate is gone.
+    # Fails on PR #15 head 0ad859d.
     md = _markdown()
-    for gone in ("the hosted Colab T4 run of blob `75e7e1ee`", "add a few minutes (an estimate)", "the same day"):
+    for gone in ("the hosted Colab T4 run of blob `75e7e1ee`", "add a few minutes (an estimate)",
+                 "the same day"):
         assert gone not in md, gone
     for quoted in ("83.7 s (`1c89a8be`, commit `e5f1e56`, 25 October 2026; setup 47 s)",
                    "`8cb6ad08` (commit `3a1afba`, both 25 October 2026), which printed the same numbers",
