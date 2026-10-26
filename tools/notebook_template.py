@@ -30,6 +30,8 @@ _SAMPLE_CODE = _py(
     """import hashlib
 import io
 import os
+import shutil
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -39,22 +41,81 @@ BYOD_IMAGE_PATH = ''  # @param {type:"string"}
 GROUND_TRUTH_INDEX = -1  # @param {type:"integer"}
 SAMPLE_SIDE = 256
 
+class BYODRefusal(ValueError):
+    \"\"\"A refused BYOD input: ``BYODRefusal(file_name, reason_and_fix)``.\"\"\"
+
+    dimer_refusal = True
+
+    def __init__(self, file_name, reason):
+        super().__init__(f"{file_name}: {reason}")
+        self.file_name = file_name
+        self.reason = reason
+
+    def _render_traceback_(self):
+        return [f"Refused: {self}"]
+
+
+# What an earlier run of Sections 4-10 left in this session. A refused input removes these results and the
+# outputs/ files below (DAT20), so nothing from that run can pass as a result of the refused file.
+RUN_RESULT_NAMES = (
+    'image_name', 'image_bytes', 'uploaded', 'image', 'sample_kind', 'ramp', 'red', 'green', 'blue', 'array',
+    'ground_truth', 'sample_sha256', 'input_manifest', 'result', 'prediction', 'rank', 'item', 'targets', 'report',
+    'zip_name', 'zip_bytes', 'dataset', 'dataset_kind', 'download_error', 'request', 'actual_sha', 'train_images',
+    'train_targets', 'val_images', 'val_targets', 'dataset_manifest', 'train_keys', 'shared_names',
+    'dataset_provenance', 'counts', 'train_backbone', 'planned', 'ft_output_dir', 'fine_tuned_pipe', 'train_meta',
+    'finetune_config', 'row', 'reloaded_pipe', 'predicted_indices', 'predicted_scores', 'label_agreement',
+    'max_score_difference', 'img', 'reloaded', 'in_memory', 'in_memory_scores', 'equivalence', 'artifact_sha256',
+    'finetuned_eval_report', 'writer', 'item_id', 'target', 'predicted', 'score', 'metrics', 'low', 'high',
+    'run_history', 'payload', 'columns', 'CUSTOM_CLASSES',
+)
+RUN_OUTPUTS = (
+    'outputs/@STEM@_*',
+)
+
+
+def refuse_byod(file_name, reason, names=None, outputs=None):
+    \"\"\"Remove the earlier run's results and outputs/ files, then stop the cell with one Refused: line naming the file and the fix.\"\"\"
+    for name in RUN_RESULT_NAMES if names is None else names:
+        globals().pop(name, None)
+    for pattern in RUN_OUTPUTS if outputs is None else outputs:
+        for path in Path('.').glob(pattern):
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                path.unlink()
+    reason = str(reason).rstrip('. ')
+    if 'again' not in reason:
+        reason += '; fix the input and run this cell again'
+    raise BYODRefusal(file_name, reason + ' (the earlier results of this session and their outputs/ files were removed).') from None
+
+
 if USE_BYOD:
-    if BYOD_IMAGE_PATH:
-        image_name = os.path.basename(BYOD_IMAGE_PATH)
-        with open(BYOD_IMAGE_PATH, 'rb') as handle:
-            image_bytes = handle.read()
-    else:
-        from google.colab import files
-        uploaded = files.upload()
-        if len(uploaded) != 1:
-            raise ValueError(f'Upload exactly one image file (got {len(uploaded)}). Outside Colab, set BYOD_IMAGE_PATH to a file path instead.')
-        image_name, image_bytes = next(iter(uploaded.items()))
+    # DAT20: every problem with your file (path, upload, decoding) stops here as one Refused: line.
+    image_name = (os.path.basename(BYOD_IMAGE_PATH) or BYOD_IMAGE_PATH) if BYOD_IMAGE_PATH else '(no file)'
     try:
-        image = Image.open(io.BytesIO(image_bytes))
-        image.load()
-    except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
-        raise ValueError(f'{image_name}: not a decodable image ({type(exc).__name__}). Use a PNG, JPEG, WebP or BMP file and run this cell again.') from None
+        if BYOD_IMAGE_PATH:
+            if not os.path.isfile(BYOD_IMAGE_PATH):
+                raise BYODRefusal(image_name, f'BYOD_IMAGE_PATH {BYOD_IMAGE_PATH!r} does not exist or is not a file: set it to one image file and run this cell again')
+            with open(BYOD_IMAGE_PATH, 'rb') as handle:
+                image_bytes = handle.read()
+        else:
+            try:
+                from google.colab import files
+            except ImportError:
+                raise BYODRefusal('(no file)', 'there is no upload dialog outside Google Colab: set BYOD_IMAGE_PATH to a file path and run this cell again') from None
+            uploaded = files.upload()
+            if len(uploaded) != 1:
+                raise BYODRefusal(', '.join(sorted(uploaded)) or '(no file)', f'Upload exactly one image file (got {len(uploaded)}). Outside Colab, set BYOD_IMAGE_PATH to a file path instead; run this cell again.')
+            image_name, image_bytes = next(iter(uploaded.items()))
+        try:
+            image = Image.open(io.BytesIO(image_bytes))
+            image.load()
+        except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
+            raise BYODRefusal(image_name, f'not a decodable image ({type(exc).__name__}). Use a PNG, JPEG, WebP or BMP file and run this cell again.') from None
+    except BYODRefusal as exc:
+        refuse_byod(exc.file_name, exc.reason)
+    except (ValueError, OSError) as exc:  # open() and decoding raise these for an unreadable or undecodable file
+        refuse_byod(image_name, f'{type(exc).__name__}: {exc}')
     sample_kind = 'BYOD'
 else:
     # Deterministic synthetic gradient: no randomness, so no seed is needed and the digest is stable.
@@ -113,6 +174,7 @@ _DATA_CODE = _py(
     """import hashlib
 import os
 import urllib.request
+import zipfile
 
 USE_BYOD_DATASET = False  # @param {type:"boolean"}
 BYOD_DATASET_PATH = ''  # @param {type:"string"}
@@ -122,21 +184,52 @@ SAMPLE_DATASET_SHA256 = '66f90a4f87d865e8eb653b62f10e754684075a32314177de7683234
 VALIDATION_SPLIT = 0.2
 SUBSET_PER_CLASS = 100  # images per class kept from the tutorial dataset (50 photo pairs: 80 train + 20 held out)
 
+# What an earlier run of Sections 8-10 left in this session. A refused input removes these results and the
+# outputs/ files below (DAT20), so nothing from that run can pass as a result of the refused file.
+DATASET_RESULT_NAMES = (
+    'zip_name', 'zip_bytes', 'dataset', 'dataset_kind', 'download_error', 'request', 'actual_sha', 'train_images',
+    'train_targets', 'val_images', 'val_targets', 'dataset_manifest', 'train_keys', 'shared_names',
+    'dataset_provenance', 'counts', 'train_backbone', 'planned', 'ft_output_dir', 'fine_tuned_pipe', 'train_meta',
+    'finetune_config', 'row', 'reloaded_pipe', 'predicted_indices', 'predicted_scores', 'label_agreement',
+    'max_score_difference', 'img', 'reloaded', 'in_memory', 'in_memory_scores', 'equivalence', 'artifact_sha256',
+    'finetuned_eval_report', 'writer', 'item_id', 'target', 'predicted', 'score', 'metrics', 'low', 'high',
+    'run_history', 'payload', 'columns', 'CUSTOM_CLASSES',
+)
+DATASET_OUTPUTS = (
+    'outputs/@STEM@_finetuned', 'outputs/@STEM@_finetuned_evaluation_report.json',
+    'outputs/@STEM@_validation_predictions.csv', 'outputs/@STEM@_result.json',
+    'outputs/@STEM@_top_k.csv',
+)
+
+
 if USE_BYOD_DATASET:
-    if BYOD_DATASET_PATH:
-        zip_name = os.path.basename(BYOD_DATASET_PATH)
-        with open(BYOD_DATASET_PATH, 'rb') as handle:
-            zip_bytes = handle.read()
-    else:
-        from google.colab import files
-        uploaded = files.upload()
-        if len(uploaded) != 1:
-            raise ValueError(f'Upload exactly one dataset .zip archive (got {len(uploaded)}). Outside Colab, set BYOD_DATASET_PATH instead.')
-        zip_name, zip_bytes = next(iter(uploaded.items()))
-    if not zip_name.lower().endswith('.zip'):
-        raise ValueError(f'BYOD archive must be a .zip file, got {zip_name}')
-    dataset = load_image_zip(zip_bytes, seed=SPLIT_SEED, validation_split=VALIDATION_SPLIT, source=f'user upload: {zip_name}')
-    dataset_kind = 'BYOD'
+    # DAT20: every problem with your archive (path, upload, suffix, zip, members, images, classes, split) stops here as one
+    # Refused: line. The pinned tutorial dataset keeps its traceback: a failure there is not your input.
+    zip_name = (os.path.basename(BYOD_DATASET_PATH) or BYOD_DATASET_PATH) if BYOD_DATASET_PATH else '(no file)'
+    try:
+        if BYOD_DATASET_PATH:
+            if not os.path.isfile(BYOD_DATASET_PATH):
+                raise BYODRefusal(zip_name, f'BYOD_DATASET_PATH {BYOD_DATASET_PATH!r} does not exist or is not a file: set it to a .zip archive and run this cell again')
+            zip_name = os.path.basename(BYOD_DATASET_PATH)
+            with open(BYOD_DATASET_PATH, 'rb') as handle:
+                zip_bytes = handle.read()
+        else:
+            try:
+                from google.colab import files
+            except ImportError:
+                raise BYODRefusal('(no file)', 'there is no upload dialog outside Google Colab: set BYOD_DATASET_PATH to a .zip path and run this cell again') from None
+            uploaded = files.upload()
+            if len(uploaded) != 1:
+                raise BYODRefusal(', '.join(sorted(uploaded)) or '(no file)', f'Upload exactly one dataset .zip archive (got {len(uploaded)}). Outside Colab, set BYOD_DATASET_PATH instead; run this cell again.')
+            zip_name, zip_bytes = next(iter(uploaded.items()))
+        if not zip_name.lower().endswith('.zip'):
+            raise BYODRefusal(zip_name, 'BYOD archive must be a .zip file: zip the class folders and run this cell again')
+        dataset = load_image_zip(zip_bytes, seed=SPLIT_SEED, validation_split=VALIDATION_SPLIT, source=f'user upload: {zip_name}')
+        dataset_kind = 'BYOD'
+    except BYODRefusal as exc:
+        refuse_byod(exc.file_name, exc.reason, DATASET_RESULT_NAMES, DATASET_OUTPUTS)
+    except (ValueError, OSError, zipfile.BadZipFile) as exc:  # load_image_zip raises ValueError; a corrupt member read raises BadZipFile
+        refuse_byod(zip_name, f'{type(exc).__name__}: {exc}', DATASET_RESULT_NAMES, DATASET_OUTPUTS)
 else:
     zip_bytes, download_error = None, None
     try:
