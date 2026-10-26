@@ -1,6 +1,7 @@
 """Final prose pass (Kurt's ruling, 2026-10-26): the flagged expectation sentences are removed or
 rewritten as records of named runs.
-resnet50 (Kurt's ruling): the SPLIT_SEED 0/1/2 scores are dropped; the split-seed check is cited by commit 72a6cda. Follow-up: Section 12 local-check numbers dropped.
+resnet50 (Kurt's ruling): the SPLIT_SEED 0/1/2 scores are dropped; the split-seed check is cited by
+commit 72a6cda. Follow-up: Section 12 local-check numbers dropped.
 Fails on PR head f839e49.
 """
 import json
@@ -29,7 +30,8 @@ GONE = [
 PRESENT = [
     'a local CPU split-seed check (not a hosted run; commit `72a6cda`)',
     'The count can change with the split',
-    'in a local CPU check (not a hosted run; commit `72a6cda`; the hosted Colab T4 runs covered the default path only)',
+    ('in a local CPU check (not a hosted run; commit `72a6cda`; the hosted Colab T4 runs covered'
+     ' the default path only)'),
 ]
 
 
