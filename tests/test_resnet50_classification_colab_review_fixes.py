@@ -531,6 +531,14 @@ def test_air_gapped_fallback_runs_through_fine_tuning_and_evaluation(
     assert (tmp_path / "outputs" / "resnet50_classification_finetuned_evaluation_report.json").is_file()
 
 
+def _section4_helpers(nb: dict, ns: dict[str, Any]) -> dict[str, Any]:
+    """Section 4 on its default path defines the DAT20 refusal helpers that Section 8 uses."""
+    helpers: dict[str, Any] = {"NUM_CLASSES": 1000}
+    _run(_cell(nb, "USE_BYOD = False"), helpers)
+    ns.update({k: helpers[k] for k in ("BYODRefusal", "refuse_byod", "Path", "shutil")})
+    return ns
+
+
 def test_byod_archive_flows_through_the_cell_and_a_bad_one_stops_before_training(
     nb: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -545,10 +553,10 @@ def test_byod_archive_flows_through_the_cell_and_a_bad_one_stops_before_training
     good, bad = tmp_path / "good.zip", tmp_path / "bad.zip"
     good.write_bytes(_zip(GOOD))
     bad.write_bytes(_zip({**GOOD, "stray.png": _png((1, 2, 3))}))
-    ns = _stub_namespace(tmp_path)
+    ns = _section4_helpers(nb, _stub_namespace(tmp_path))
     _run(data_cell.replace("BYOD_DATASET_PATH = ''", f"BYOD_DATASET_PATH = {str(good)!r}"), ns)
     assert ns["dataset_kind"] == "BYOD" and ns["CUSTOM_CLASSES"] == ["blue", "red"]
-    ns = _stub_namespace(tmp_path)
+    ns = _section4_helpers(nb, _stub_namespace(tmp_path))
     with pytest.raises(ValueError, match="stray.png"):
         _run(data_cell.replace("BYOD_DATASET_PATH = ''", f"BYOD_DATASET_PATH = {str(bad)!r}"), ns)
     assert "fine_tuned_pipe" not in ns

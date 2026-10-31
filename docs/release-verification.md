@@ -170,9 +170,55 @@ they are measurements for the stated runtime, not general estimates.
 - **Not exercised:** the BYOD image and BYOD dataset gates (step 7), the Section 12 activity (`TRAINABLE = 'all'`)
   and any other optional journey; no browser interaction.
 
+### Hosted Colab T4 runs of blob `63632210` (2026-10-29)
+
+These runs executed the PR head `b4e030ffab359ed8eabdf5cc3859295808ef646a`, notebook `tutorials/resnet50_classification_colab.ipynb` blob `63632210b2852a85ea96c013f43a7aa54f552f42`, fetched at the 40-character SHA and Git-blob verified, with the Colab CLI (`colab exec -f`) on a fresh Colab Tesla T4 session (not a browser `Run all`). Each `run_summary.json` records `verdict` `PASS`, `exec_exit_code` 0, `input_unchanged` true and `stop_verified` true (the VM was released), and the SHA-256 of each executed notebook equals the summary's `executed_sha256`.
+
+**Default path (2026-10-29 13:53:28 UTC start).** Default settings, no overrides; session `suite-resnet50-b4e030f-8a5f`; wall 111.9 s (`wall_s`); `code_cells` 14, `executed_cells` 13, 0 errors. Retained evidence: [`docs/execution-evidence/2026-10-29-b4e030f/`](execution-evidence/2026-10-29-b4e030f/).
+
+Printed by the default run (verbatim lines from the executed outputs):
+
+```text
+{'verified_files': 3, 'revision': '767268603ca0cb0bfe326fa87277f19c419566ef'}
+{'fresh_boundary_source': 'fine-tuned-artifact', 'images': 40, 'label_agreement': 40, 'max_score_difference': 0.0, 'tolerance': 0.0001, 'equivalent': True}
+Held-out images: 40 (tutorial dataset) - a tutorial metric, not a benchmark
+Accuracy:        34/40 = 85.0%   95% Wilson interval 70.9% to 92.9%
+Majority-class baseline: 50.0% (always answering 'frog')
+Verdict: sample-sanity; comparison to baseline: above-baseline
+  frog                            14/20 correct
+  truck                           20/20 correct
+```
+
+**DAT20 refusal record (2026-10-29, blob `63632210`).** Overrides, set by `--set` on a copy of the blob: `USE_BYOD` `False` → `True` and `BYOD_IMAGE_PATH` `''` → `'/etc/hostname'` (the run copy differs from the blob in exactly those 2 source lines). The suite cut the run copy right after the refusing cell `resnet50_classification-13`, dropping 17 cells (8 of them code cells), which reproduces `Run all` stopping at the first error; the cut copy is `run_copy.ipynb`, SHA-256 `14662cefea8bfe210876b324c83dcb3e674fde9fcd39d538b4515877fa952806` (Git blob `e4a821b7`), equal to the summary's `run_copy_sha256`. The cut copy's earlier code cells completed without an error output; the refusing cell's only error output has `ename` `IsolatedCellRefusal` and no traceback, and its output holds exactly one `Refused:` line:
+
+```text
+Refused: hostname: not a decodable image (UnidentifiedImageError). Use a PNG, JPEG, WebP or BMP file and run this cell again (the earlier results of this session and their outputs/ files were removed).
+```
+
+This run says nothing about the 17 cut cells, which did not run in it. Session `suite-resnet50-b4e030f-8a5f`, wall 84.6 s. Retained evidence: [`docs/execution-evidence/2026-10-29-b4e030f-refusal/`](execution-evidence/2026-10-29-b4e030f-refusal/).
+
+**Local-path redaction.** Local paths were replaced byte-wise by `<local-run-dir>` (and the Colab CLI install path by `<colab-cli-tool-dir>/`) before the first commit; each executed notebook and run copy was checked against its `run_summary.json` before any edit.
+
+| File (under `docs/execution-evidence/2026-10-29-b4e030f/`) | Captured SHA-256 | Committed SHA-256 |
+|---|---|---|
+| `resnet50_classification_colab_b4e030f_colab-cli-t4_default.ipynb` | `a125eaa89ab0aca1c8b50bc225c94e3654b6d49047d49dfd11f7eda4ec83a205` | `a125eaa89ab0aca1c8b50bc225c94e3654b6d49047d49dfd11f7eda4ec83a205` (unchanged, no local path) |
+| `exec.log` | `2c9fbec4c3bbbeb18f7948bea55562af3e3077e76185372dced652214c7dfec8` | `e5bcee88723425a79b8fbfdcf919ad67f8b928b2e93dd93cd343d1d12283bd1e` (2 local-path replacements) |
+| `run_summary.json` | `e71ca2b1834d388ff5b597758ae1bad1669c1fbaf02bbbbec08b3a17924c46d4` | `e71ca2b1834d388ff5b597758ae1bad1669c1fbaf02bbbbec08b3a17924c46d4` (unchanged, no local path) |
+
+| File (under `docs/execution-evidence/2026-10-29-b4e030f-refusal/`) | Captured SHA-256 | Committed SHA-256 |
+|---|---|---|
+| `resnet50_classification_colab_b4e030f_colab-cli-t4_refusal.ipynb` | `7a17be6acc6e5737d1479df3dd1acfb854c21c43af896905daa4f7364374ab59` | `7a17be6acc6e5737d1479df3dd1acfb854c21c43af896905daa4f7364374ab59` (unchanged, no local path) |
+| `exec.log` | `27287b15b518f706be4173745b25ef44d30133d3bd4dbaeacf8bbb4c10f687b9` | `fa9efa6d0587980f47714792502e979338cafafb9b683a94ccd2bb092f1953b6` (2 local-path replacements) |
+| `run_summary.json` | `0c65b41ab5130742ef62c76f5bbcc1ee0fb6e4de56842438062505415a7f1c29` | `0c65b41ab5130742ef62c76f5bbcc1ee0fb6e4de56842438062505415a7f1c29` (unchanged, no local path) |
+| `run_copy.ipynb` | `14662cefea8bfe210876b324c83dcb3e674fde9fcd39d538b4515877fa952806` | `14662cefea8bfe210876b324c83dcb3e674fde9fcd39d538b4515877fa952806` (unchanged, no local path) |
+
+Not exercised by these runs: an accepted BYOD input (REL12) and a browser `Run all` of the interactive journeys (REL2).
+
 ## Current status
 
 **Current status (2026-10-26, final prose pass): Candidate, hosted run recorded.** **Code commit `37a227f`, notebook commit `01c9874`.** The current blob of `tutorials/resnet50_classification_colab.ipynb` is `3e233d8eb923d5958f3532de62eebb9b902e0682`, **Candidate**; that exact blob (PR #15 head `5f61717`) passed its confirming hosted run on 2026-10-26: Colab CLI sequential execution on a fresh Colab Tesla T4, one pass, no restart, 0 errors (14/14 code cells, 82.0 s wall; held-out 34/40 (85.0 %, Wilson 70.9–92.9 %) against a 50.0 % majority baseline; reload equivalent). The paths this blob's runs cover: the default path only. Remaining gates: REL12 (a hosted BYOD run, one input accepted and one refused) and REL2 (a browser `Run all`). Runs of earlier blobs are history (REL14). See its row under "Recorded executions". Kurt's 2026-10-26 ruling: fix only the prose rule breaks the final evidence flagged; recorded drift stays recorded, not fixed. Markdown only: the SPLIT_SEED 0/1/2 scores are dropped from the prose, which keeps the point that results vary by split and cites the local CPU split-seed check by commit 72a6cda. The runs of blob `810e53cd` and earlier blobs are history (REL14); the records below are kept; follow-up the same day: the Section 12 answer and the Interpretation also drop the local-check counts (21/40 and its breakdown), keeping the finding that full fine-tuning did no better than the baseline, cited by commit 72a6cda. It supersedes blob `cd0a7f3c` (code commit `5e87374`, notebook commit `cf5330e`), which was never run.
+
+The current blob `63632210` (code commit `a84df86`) shows a refused BYOD input as one `Refused: <file>: <reason>` line with no traceback, removes the earlier run's results and `outputs/` files and stops Run all at that cell, while genuine failures keep their traceback (NOTEBOOK_SPEC DAT19/DAT20); on 2026-10-29 its default path (14 code cells, exit 0, 0 errors) and its scripted DAT20 refusal (`USE_BYOD=True;BYOD_IMAGE_PATH=/etc/hostname`: exactly one `Refused:` line at cell `resnet50_classification-13`, no traceback, earlier cells clean, VM released) both passed on a hosted Colab Tesla T4 (Colab CLI `colab exec -f`, not a browser `Run all`). The remaining gates are REL12 (a hosted BYOD run with an accepted input) and REL2 (a browser run of the interactive journeys); earlier blobs' runs are history (REL14).
 
 Evidence files for the 2026-10-26 default run of blob `3e233d8e` (confirming run of the final prose pass), copied from the run directory and redacted byte-wise (local run paths replaced by `<local-run-dir>`, the Colab CLI install path by `<colab-cli-tool-dir>`; no JSON re-serialised; the executed notebook's captured hash equals `run_summary.json` `executed_sha256`):
 

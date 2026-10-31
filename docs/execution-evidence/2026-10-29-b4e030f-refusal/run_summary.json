@@ -1,0 +1,70 @@
+{
+  "repo": "resnet50-classification-pipeline",
+  "sha": "b4e030ffab359ed8eabdf5cc3859295808ef646a",
+  "notebook": "tutorials/resnet50_classification_colab.ipynb",
+  "blob": "63632210b2852a85ea96c013f43a7aa54f552f42",
+  "gpu": "T4",
+  "session": "suite-resnet50-b4e030f-8a5f",
+  "started_utc": "2026-10-29T13:57:04+00:00",
+  "runner": "Colab CLI `colab exec -f` on a fresh session (not a browser Run all)",
+  "overrides": [
+    {
+      "name": "USE_BYOD",
+      "from": "False",
+      "to": "True"
+    },
+    {
+      "name": "BYOD_IMAGE_PATH",
+      "from": "''",
+      "to": "'/etc/hostname'"
+    }
+  ],
+  "run_copy_blob": "e4a821b709f794be48b5e583085a650b1dd393ef",
+  "run_copy_sha256": "14662cefea8bfe210876b324c83dcb3e674fde9fcd39d538b4515877fa952806",
+  "run_copy_note": "refusal run: the run copy is the committed notebook with the listed assignment overrides, cut immediately after the refusal cell and re-serialised (nbformat layout); input_unchanged compares against that copy",
+  "truncated_after_cell": "resnet50_classification-13",
+  "refusal_cell_ref": "resnet50_classification-13",
+  "refusal_cell_index": 6,
+  "cells_dropped": 17,
+  "code_cells_dropped": 8,
+  "original_sha256": "8137b3ef51c4be07ad8364c64f69b5a48832dd0e5ceb482f5a21049ce81a6d7c",
+  "status": "[suite-resnet50-b4e030f-8a5f] gpu-t4-s-ass1c0-niy5luihwyip | Hardware: T4 | Shape: Standard | Variant: GPU | Status: IDLE",
+  "exec_exit_code": 0,
+  "stopped": true,
+  "stop_verified": true,
+  "wall_s": 84.6,
+  "input_unchanged": true,
+  "executed_file": "resnet50_classification_colab_b4e030f_colab-cli-t4_output.ipynb",
+  "log_cells": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "log_total": 6,
+  "code_cells": 6,
+  "executed_cells": 5,
+  "errors": [
+    {
+      "cell": "resnet50_classification-13",
+      "ename": "IsolatedCellRefusal",
+      "evalue": "hostname: not a decodable image (UnidentifiedImageError). Use a PNG, JPEG, WebP or BMP file and run this cell again (the earlier results of this session and their outputs/ files were removed)."
+    }
+  ],
+  "execution_counts": [],
+  "sequential": null,
+  "executed_sha256": "7a17be6acc6e5737d1479df3dd1acfb854c21c43af896905daa4f7364374ab59",
+  "log_sequential_complete": true,
+  "mode": "expect_refusal",
+  "refusal_line": "Refused: hostname: not a decodable image (UnidentifiedImageError). Use a PNG, JPEG, WebP or BMP file and run this cell again (the earlier results of this session and their outputs/ files were removed).",
+  "halting_cell_index": 6,
+  "halting_cell_id": "resnet50_classification-13",
+  "error_cells": [
+    6
+  ],
+  "refusal_fail_reasons": [],
+  "refusal_ok": true,
+  "verdict": "PASS"
+}
