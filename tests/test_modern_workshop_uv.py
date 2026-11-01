@@ -85,7 +85,7 @@ def test_carried_lock_is_the_repository_lock_and_every_package_is_hashed():
 def test_direct_pins_are_unchanged_and_agree_across_input_lock_and_runtime_cell():
     expected = {
         "torch": "2.14.0", "torchvision": "0.29.0", "torchaudio": "2.11.0", "timm": "1.0.29",
-        "safetensors": "0.8.0", "numpy": "2.5.3", "pillow": "11.3.0", "huggingface-hub": "0.36.2",
+        "safetensors": "0.8.0", "numpy": "2.5.3", "pillow": "13.0.0", "huggingface-hub": "0.36.2",
         "matplotlib": "3.10.6",
     }
     assert assigned_literal(CELLS["aa91b536"], "PINS") == expected
